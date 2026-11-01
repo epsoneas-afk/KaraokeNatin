@@ -14,6 +14,7 @@ param(
     [string]$Repo = "epsoneas-afk/KaraokeNatin",
     [string]$NotesFile = "",
     [string]$TokenFile = "F:\Proyectos\karaokenatin\.github-token",
+    [string]$StableAsset = "KaraokeNatin-latest.apk",
     [switch]$Draft
 )
 
@@ -72,24 +73,39 @@ try {
 
 $assetName = Split-Path $Apk -Leaf
 $assets = Invoke-RestMethod "$api/releases/$($release.id)/assets" -Headers $headers -Method Get
-foreach ($a in @($assets)) {
-    if ($a.name -eq $assetName) {
-        Write-Host "Reemplazando asset existente '$assetName' ..." -ForegroundColor Yellow
-        Invoke-RestMethod "$api/releases/assets/$($a.id)" -Headers $headers -Method Delete | Out-Null
-    }
-}
 
 $sizeMb = [math]::Round((Get-Item $Apk).Length / 1MB, 1)
-Write-Host "Subiendo '$assetName' ($sizeMb MB) ..." -ForegroundColor Cyan
-$uploadUrl = "https://uploads.github.com/repos/$Repo/releases/$($release.id)/assets?name=$([uri]::EscapeDataString($assetName))"
 $uploadHeaders = @{} + $headers
 $uploadHeaders["Content-Type"] = "application/vnd.android.package-archive"
 $bytes = [System.IO.File]::ReadAllBytes((Resolve-Path $Apk).Path)
-$asset = Invoke-RestMethod $uploadUrl -Headers $uploadHeaders -Method Post -Body $bytes
+
+function Send-Asset([string]$name) {
+    foreach ($a in @($assets)) {
+        if ($a.name -eq $name) {
+            Write-Host "Reemplazando asset existente '$name' ..." -ForegroundColor Yellow
+            Invoke-RestMethod "$api/releases/assets/$($a.id)" -Headers $headers -Method Delete | Out-Null
+        }
+    }
+    Write-Host "Subiendo '$name' ($sizeMb MB) ..." -ForegroundColor Cyan
+    $url = "https://uploads.github.com/repos/$Repo/releases/$($release.id)/assets?name=$([uri]::EscapeDataString($name))"
+    return Invoke-RestMethod $url -Headers $uploadHeaders -Method Post -Body $bytes
+}
+
+$asset = Send-Asset $assetName
+
+# Copia con nombre fijo: permite un enlace permanente a la ultima APK
+# (.../releases/latest/download/KaraokeNatin-latest.apk) para el codigo de
+# Downloader y para el comprobador de actualizaciones dentro de la app.
+if ($StableAsset) {
+    Send-Asset $StableAsset | Out-Null
+}
 
 Write-Host ""
 Write-Host "RELEASE PUBLICADO" -ForegroundColor Green
 Write-Host "  $($release.html_url)" -ForegroundColor Green
 Write-Host "  Archivo: $($asset.name)  ($([math]::Round($asset.size / 1MB, 1)) MB)" -ForegroundColor Green
+if ($StableAsset) {
+    Write-Host "  Enlace fijo: https://github.com/$Repo/releases/latest/download/$StableAsset" -ForegroundColor Green
+}
 Write-Host ""
 Write-Host "Obtainium lo detectara en el proximo chequeo." -ForegroundColor Yellow

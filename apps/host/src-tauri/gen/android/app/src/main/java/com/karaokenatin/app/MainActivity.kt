@@ -1,12 +1,18 @@
 package com.karaokenatin.app
 
+import android.app.AlertDialog
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.view.KeyEvent
 import android.view.inputmethod.InputMethodManager
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import androidx.activity.enableEdgeToEdge
+import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
 
 class MainActivity : TauriActivity() {
   private var webView: WebView? = null
@@ -20,9 +26,113 @@ class MainActivity : TauriActivity() {
   // D-pad into synthetic navigation events. Kept in sync via the bridge.
   private var textInputFocused = false
 
+  private companion object {
+    /** Repositorio desde el que se publican las versiones (solo una). */
+    const val RELEASES_API =
+      "https://api.github.com/repos/epsoneas-afk/KaraokeNatin/releases/latest"
+
+    /**
+     * Enlace fijo a la APK de la ultima version. Funciona porque cada release
+     * publica una copia de la APK con el nombre "KaraokeNatin-latest.apk"
+     * (ver scripts/publish-release.ps1).
+     */
+    const val APK_URL =
+      "https://github.com/epsoneas-afk/KaraokeNatin/releases/latest/download/KaraokeNatin-latest.apk"
+
+    const val RELEASE_PAGE =
+      "https://github.com/epsoneas-afk/KaraokeNatin/releases/latest"
+
+    const val PREFS = "knt_updates"
+  }
+
   override fun onCreate(savedInstanceState: Bundle?) {
     enableEdgeToEdge()
     super.onCreate(savedInstanceState)
+    // Comprobar si hay una version nueva y ofrecerla con un dialogo nativo
+    // (manejable con el control remoto). Se retrasa para no tapar el arranque.
+    window.decorView.postDelayed({ checkForUpdates() }, 8000)
+  }
+
+  /**
+   * Consulta la ultima Release del repositorio y, si es mas nueva que la
+   * version instalada, muestra el dialogo de actualizacion.
+   *
+   * Corre en un hilo aparte: sin red o sin respuesta, se ignora en silencio.
+   */
+  private fun checkForUpdates() {
+    if (isFinishing) return
+    Thread {
+      val latest = try {
+        val conn = (URL(RELEASES_API).openConnection() as HttpURLConnection).apply {
+          connectTimeout = 8000
+          readTimeout = 8000
+          setRequestProperty("User-Agent", "KaraokeNatin")
+          setRequestProperty("Accept", "application/vnd.github+json")
+        }
+        val text = conn.inputStream.bufferedReader().use { it.readText() }
+        conn.disconnect()
+        JSONObject(text).optString("tag_name").removePrefix("v").trim()
+      } catch (_: Exception) {
+        "" // Sin conexion: no molestar.
+      }
+      if (latest.isBlank()) return@Thread
+
+      val current = try {
+        packageManager.getPackageInfo(packageName, 0).versionName ?: ""
+      } catch (_: Exception) {
+        ""
+      }
+      if (current.isBlank() || !isNewerVersion(latest, current)) return@Thread
+
+      // No repetir el aviso de la misma version en cada arranque.
+      val prefs = getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+      if (prefs.getString("last_prompted", "") == latest) return@Thread
+
+      runOnUiThread {
+        if (isFinishing) return@runOnUiThread
+        prefs.edit().putString("last_prompted", latest).apply()
+        showUpdateDialog(current, latest)
+      }
+    }.start()
+  }
+
+  /** true si [candidate] es mayor que [installed] (comparacion 1.2.3). */
+  private fun isNewerVersion(candidate: String, installed: String): Boolean {
+    val a = candidate.split(".").map { it.toIntOrNull() ?: 0 }
+    val b = installed.split(".").map { it.toIntOrNull() ?: 0 }
+    for (i in 0 until maxOf(a.size, b.size)) {
+      val x = a.getOrElse(i) { 0 }
+      val y = b.getOrElse(i) { 0 }
+      if (x != y) return x > y
+    }
+    return false
+  }
+
+  private fun showUpdateDialog(current: String, latest: String) {
+    AlertDialog.Builder(this)
+      .setTitle("Actualizacion disponible")
+      .setMessage(
+        "Hay una version nueva de KaraokeNatin (v$latest). Tienes la v$current.\n\n" +
+          "Se abrira el navegador para descargar la APK y luego el instalador de " +
+          "Android te pedira confirmar. Se instala encima: no se pierden datos ni canciones."
+      )
+      .setPositiveButton("Actualizar") { _, _ -> openUpdateUrl() }
+      .setNegativeButton("Ahora no", null)
+      .show()
+  }
+
+  /** Abre la descarga de la ultima APK; si no hay navegador, la pagina del release. */
+  private fun openUpdateUrl() {
+    val newTask = Intent.FLAG_ACTIVITY_NEW_TASK
+    try {
+      startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(APK_URL)).addFlags(newTask))
+    } catch (_: Exception) {
+      try {
+        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(RELEASE_PAGE)).addFlags(newTask))
+      } catch (_: Exception) {
+        // Sin navegador instalado: no hay nada mas que hacer.
+      }
+    }
   }
 
   override fun onWebViewCreate(webView: WebView) {

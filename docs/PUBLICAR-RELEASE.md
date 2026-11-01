@@ -44,11 +44,27 @@ F:\Proyectos\karaokenatin\repo-src\scripts\publish-release.ps1 `
   -Apk F:\Proyectos\karaokenatin\KaraokeNatin-X.Y.Z.apk
 ```
 Crea el release `vX.Y.Z` con las notas de `release-notes/vX.Y.Z.md` y sube la APK.
+Además sube una copia como `KaraokeNatin-latest.apk`, que da un enlace permanente
+a la última versión (lo usa el aviso de actualización dentro de la app y el
+código de Downloader):
 
-## 5. Obtainium (TV)
-- Instalar Obtainium en la TV.
-- Agregar el repo: `https://github.com/epsoneas-afk/KaraokeNatin`.
-- En cada release nueva con APK, Obtainium avisa y actualiza con un toque.
+```
+https://github.com/epsoneas-afk/KaraokeNatin/releases/latest/download/KaraokeNatin-latest.apk
+```
+
+## 5. Actualizaciones en la TV
+
+Hay tres formas, de la más automática a la más manual:
+
+1. **Dentro de la app (recomendada)**: al abrirla consulta GitHub y, si hay
+   versión nueva, muestra un aviso con botón **Actualizar**. El instalador de
+   Android pide confirmar (no hay instalación silenciosa fuera de Play Store).
+2. **Downloader con código**: en https://go.aftvnews.com acortá el enlace
+   permanente de arriba y obtené un código numérico. Ese código se escribe en
+   Downloader y siempre baja la última APK.
+3. **Obtainium** (opcional): agregar `https://github.com/epsoneas-afk/KaraokeNatin`
+   y actualizar con un toque. Si se usa, conviene filtrar la APK con el patrón
+   `^KaraokeNatin-[0-9]` para ignorar la copia `KaraokeNatin-latest.apk`.
 
 ## Token de GitHub
 1. Iniciar sesion en GitHub como **epsoneas-afk**.

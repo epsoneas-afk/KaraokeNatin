@@ -65,7 +65,7 @@ export default function ModeSelect({ onSelectHost, onSelectGuest, onSelectLibrar
     return (
         <div ref={ref} className="mode-select-screen">
             <h1 className="mode-select-logo"><MicVocal size={40} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.3em' }} /> KaraokeNatin</h1>
-            <p className="mode-select-tagline">Elige cómo quieres usar la app — build v0.3.3</p>
+            <p className="mode-select-tagline">Elige cómo quieres usar la app — build v0.3.4</p>
 
             <FocusContext.Provider value={focusKey}>
                 <div className="mode-select-cards">
