@@ -41,8 +41,10 @@ if (-not $NotesFile) {
     $candidate = Join-Path $PSScriptRoot "..\release-notes\$tag.md"
     if (Test-Path $candidate) { $NotesFile = $candidate }
 }
+# Se lee como UTF-8 con ReadAllText para conservar acentos y evitar los
+# metadatos (PSPath, PSParentPath...) que Get-Content agrega al string.
 $body = if ($NotesFile -and (Test-Path $NotesFile)) {
-    Get-Content $NotesFile -Raw
+    [System.IO.File]::ReadAllText((Resolve-Path $NotesFile).Path, [System.Text.Encoding]::UTF8)
 } else {
     "KaraokeNatin $tag"
 }
@@ -59,9 +61,13 @@ try {
         body       = $body
         draft      = [bool]$Draft
         prerelease = $false
-    } | ConvertTo-Json -Depth 5
+    }
+    $json = $payload | ConvertTo-Json -Depth 5
     Write-Host "Creando release $tag ..." -ForegroundColor Cyan
-    $release = Invoke-RestMethod "$api/releases" -Headers $headers -Method Post -Body $payload -ContentType "application/json"
+    # Enviar el JSON como bytes UTF-8: PowerShell 5.1 codifica el cuerpo en
+    # Latin-1 por defecto y GitHub rechaza el JSON con acentos.
+    $jsonBytes = [System.Text.Encoding]::UTF8.GetBytes($json)
+    $release = Invoke-RestMethod "$api/releases" -Headers $headers -Method Post -Body $jsonBytes -ContentType "application/json; charset=utf-8"
 }
 
 $assetName = Split-Path $Apk -Leaf
