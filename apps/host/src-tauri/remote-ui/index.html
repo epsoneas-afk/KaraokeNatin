@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>KaraokeNatin Remote</title>
+    <title>KaraokeNatin Control</title>
     <!-- Fonts: no internet dependency. 'Inter' is used when installed locally;
          otherwise this degrades to the platform's native UI font stack. -->
     <script src="/vendor/lucide-1.27.0.min.js"></script>
@@ -1145,8 +1145,8 @@
             <div class="modal-title" id="modal-title"></div>
             <div class="modal-text" id="modal-text"></div>
             <div class="modal-actions">
-                <button class="modal-btn modal-btn-cancel" onclick="closeModal()">Cancel</button>
-                <button class="modal-btn modal-btn-confirm" id="modal-confirm">Confirm</button>
+                <button class="modal-btn modal-btn-cancel" onclick="closeModal()">Cancelar</button>
+                <button class="modal-btn modal-btn-confirm" id="modal-confirm">Confirmar</button>
             </div>
         </div>
     </div>
@@ -1173,6 +1173,10 @@
             reconnectAttempts: 0,
             maxReconnectAttempts: 5,
             reconnecting: false,
+            // Human-readable reason for the last failure (shown on the
+            // disconnected screen so users and developers can tell "invalid
+            // token" apart from "host unreachable".
+            lastError: '',
             // InApp Remote mode (embedded in Tauri host app)
             isInAppRemote: new URLSearchParams(window.location.search).get('mode') === 'inapp',
             // Join token from the QR URL (?t=...). The signaling server verifies
@@ -1277,20 +1281,20 @@
             return `
                 <div class="join-screen">
                     <div class="join-logo">KaraokeNatin</div>
-                    <p class="join-subtitle">Enter your name to join the session</p>
+                    <p class="join-subtitle">Ingresa tu nombre para unirte a la sesión</p>
                     <form class="join-form" onsubmit="handleJoin(event)">
                         <input 
                             type="text" 
                             class="join-input" 
                             id="username-input"
-                            placeholder="Your name" 
+                            placeholder="Tu nombre" 
                             value="${escapeHtml(state.username)}"
                             oninput="state.username = this.value; document.querySelector('.join-btn').disabled = !this.value.trim();"
                             maxlength="20"
                             required
                         >
                         <button type="submit" class="join-btn" ${!state.username.trim() ? 'disabled' : ''}>
-                            Join Session
+                            Unirse a la sesión
                         </button>
                     </form>
                 </div>
@@ -1301,7 +1305,7 @@
             return `
                 <div class="loading">
                     <div class="spinner"></div>
-                    <p>${state.reconnecting ? `Reconnecting... (attempt ${state.reconnectAttempts})` : 'Connecting to host...'}</p>
+                    <p>${state.reconnecting ? `Reconectando… (intento ${state.reconnectAttempts})` : 'Conectando con el anfitrión…'}</p>
                 </div>
             `;
         }
@@ -1312,11 +1316,12 @@
                     <div style="color: var(--text-secondary); margin-bottom: 16px;">
                         ${icons.music}
                     </div>
-                    <h2 style="margin-bottom: 8px;">Connection Lost</h2>
-                    <p style="color: var(--text-secondary);">Could not connect to the host after ${state.maxReconnectAttempts} attempts.</p>
+                    <h2 style="margin-bottom: 8px;">Conexión perdida</h2>
+                    ${state.lastError ? `<p style="color: var(--danger); font-size: 13px; margin-bottom: 8px;">${escapeHtml(state.lastError)}</p>` : ''}
+                    <p style="color: var(--text-secondary);">No se pudo conectar con el anfitrión tras ${state.maxReconnectAttempts} intentos.</p>
                     <button class="retry-btn" onclick="reconnect()">
                         ${icons.refreshCw}
-                        <span style="margin-left: 8px;">Retry</span>
+                        <span style="margin-left: 8px;">Reintentar</span>
                     </button>
                 </div>
             `;
@@ -1341,27 +1346,27 @@
                         </div>
                     </div>
                     <div class="header-actions">
-                        <button class="icon-btn" onclick="showInviteQR()" title="Invite friends">
+                        <button class="icon-btn" onclick="showInviteQR()" title="Invitar amigos">
                             ${icons.userPlus}
                         </button>
-                        <button class="icon-btn" onclick="toggleTheme()" title="Toggle theme">
+                        <button class="icon-btn" onclick="toggleTheme()" title="Cambiar tema">
                             ${state.theme === 'dark' ? icons.sun : icons.moon}
                         </button>
                     </div>
                 </header>
 
                 <nav class="nav-tabs">
-                    <button class="nav-tab ${state.activeTab === 'playing' ? 'active' : ''}" onclick="setTab('playing')" title="Now Playing">
+                    <button class="nav-tab ${state.activeTab === 'playing' ? 'active' : ''}" onclick="setTab('playing')" title="Reproduciendo">
                         ${icons.home}
                     </button>
-                    <button class="nav-tab ${state.activeTab === 'search' ? 'active' : ''}" onclick="setTab('search')" title="Search">
+                    <button class="nav-tab ${state.activeTab === 'search' ? 'active' : ''}" onclick="setTab('search')" title="Buscar">
                         ${icons.search}
                     </button>
-                    <button class="nav-tab ${state.activeTab === 'playlist' ? 'active' : ''}" onclick="setTab('playlist')" title="Host Playlists">
+                    <button class="nav-tab ${state.activeTab === 'playlist' ? 'active' : ''}" onclick="setTab('playlist')" title="Listas del anfitrión">
                         ${icons.listMusic}
                     </button>
                     ${state.isInAppRemote ? `
-                    <button class="nav-tab ${state.activeTab === 'library' ? 'active' : ''}" onclick="setTab('library')" title="My Library">
+                    <button class="nav-tab ${state.activeTab === 'library' ? 'active' : ''}" onclick="setTab('library')" title="Mi biblioteca">
                         ${icons.library}
                     </button>
                     ` : ''}
@@ -1375,7 +1380,7 @@
                 </main>
 
             <footer class="yt-footer">
-                Videos are played via YouTube embedding. All videos are subject to YouTube's <a href="https://www.youtube.com/t/terms" target="_blank" rel="noopener">Terms of Service</a>.
+                Los videos se reproducen mediante la inserción de YouTube. Todos los videos están sujetos a los <a href="https://www.youtube.com/t/terms" target="_blank" rel="noopener">Términos de servicio</a>.
             </footer>
         `;
         }
@@ -1389,23 +1394,23 @@
                             <img class="now-playing-thumb" src="${currentSong.thumbnailUrl || `https://i.ytimg.com/vi/${currentSong.youtubeId}/hqdefault.jpg`}" alt="">
                             <div class="now-playing-info">
                                 <div class="now-playing-title">${escapeHtml(currentSong.title)}</div>
-                                <div class="now-playing-channel">${escapeHtml(currentSong.artist || 'Unknown Artist')}</div>
-                                <div class="now-playing-added-by">Added by ${escapeHtml(currentSong.addedBy || 'Guest')}</div>
+                                <div class="now-playing-channel">${escapeHtml(currentSong.artist || 'Artista desconocido')}</div>
+                                <div class="now-playing-added-by">Agregada por ${escapeHtml(currentSong.addedBy || 'Invitado')}</div>
                             </div>
                         </div>
                     ` : `
                         <div class="empty-state" style="padding: 24px 0;">
                             <div class="empty-state-icon">${icons.music}</div>
-                            <p>No song playing</p>
+                            <p>No hay canción en reproducción</p>
                         </div>
                     `}
                 </section>
 
             <section class="controls">
-                <button class="control-btn primary" onclick="togglePlayPause()" title="${isPlaying ? 'Pause' : 'Play'}" id="play-pause-btn">
+                <button class="control-btn primary" onclick="togglePlayPause()" title="${isPlaying ? 'Pausar' : 'Reproducir'}" id="play-pause-btn">
                     ${isPlaying ? icons.pause : icons.play}
                 </button>
-                <button class="control-btn" onclick="skipSong()" title="Skip">
+                <button class="control-btn" onclick="skipSong()" title="Omitir">
                     ${icons.skipForward}
                 </button>
             </section>
@@ -1413,7 +1418,7 @@
                 ${queue.length > 0 ? `
                     <section class="playing-queue">
                         <div class="section-label" style="padding: 12px 0 8px; font-size: 13px; font-weight: 600; color: var(--text-secondary);">
-                            Up Next (${queue.length})
+                            A continuación (${queue.length})
                         </div>
                         <div class="queue-list-compact">
                             ${queue.map((song, i) => {
@@ -1425,16 +1430,16 @@
                                     <img class="queue-thumb-mini" src="${song.thumbnailUrl || `https://i.ytimg.com/vi/${song.youtubeId}/hqdefault.jpg`}" alt="">
                                     <div class="queue-info-mini">
                                         <div class="queue-title">${escapeHtml(song.title)}</div>
-                                        <div class="queue-meta">${escapeHtml(song.addedBy || 'Guest')}</div>
+                                        <div class="queue-meta">${escapeHtml(song.addedBy || 'Invitado')}</div>
                                     </div>
                                     <div class="queue-actions-mini${isAnyMoveLoading ? ' loading' : ''}">
-                                        <button class="queue-action-btn-mini" onclick="moveQueueItem('${song.id}', 'up')" title="Move up" ${i === 0 || isAnyMoveLoading ? 'disabled' : ''}>
+                                        <button class="queue-action-btn-mini" onclick="moveQueueItem('${song.id}', 'up')" title="Subir" ${i === 0 || isAnyMoveLoading ? 'disabled' : ''}>
                                             ${icons.chevronUp}
                                         </button>
-                                        <button class="queue-action-btn-mini" onclick="moveQueueItem('${song.id}', 'down')" title="Move down" ${i === queue.length - 1 || isAnyMoveLoading ? 'disabled' : ''}>
+                                        <button class="queue-action-btn-mini" onclick="moveQueueItem('${song.id}', 'down')" title="Bajar" ${i === queue.length - 1 || isAnyMoveLoading ? 'disabled' : ''}>
                                             ${icons.chevronDown}
                                         </button>
-                                        <button class="queue-action-btn-mini delete${isRemoveLoading ? ' loading' : ''}" onclick="removeFromQueue('${song.id}')" title="Remove" ${isRemoveLoading ? 'disabled' : ''}>
+                                        <button class="queue-action-btn-mini delete${isRemoveLoading ? ' loading' : ''}" onclick="removeFromQueue('${song.id}')" title="Quitar" ${isRemoveLoading ? 'disabled' : ''}>
                                             ${isRemoveLoading ? icons.spinnerSmall : icons.trash}
                                         </button>
                                     </div>
@@ -1455,14 +1460,14 @@
                         type="text"
                         class="search-input"
                         id="search-input"
-                        placeholder="Search for songs..."
+                        placeholder="Buscar canciones…"
                         value="${escapeHtml(state.searchQuery)}"
                         onfocus="state.isInputFocused = true"
                         onblur="state.isInputFocused = false"
                         oninput="state.searchQuery = this.value"
                     >
                         <button type="submit" class="search-btn">
-                            Search
+                            Buscar
                         </button>
                 </form>
                 </section>
@@ -1470,7 +1475,7 @@
             ${state.searching ? `
                     <div class="loading" style="min-height: 200px;">
                         <div class="spinner"></div>
-                        <p>Searching...</p>
+                        <p>Buscando…</p>
                     </div>
                 ` : ''
                 }
@@ -1494,23 +1499,23 @@
                                     <div class="search-result-actions">
                                         ${isAdded ? `
                                             <button class="btn-sm btn-primary added" disabled>
-                                                ✓ Added!
+                                                ✓ ¡Agregada!
                                             </button>
                                         ` : `
                                             <button class="btn-sm btn-primary${isQueueLoading ? ' loading' : ''}" onclick="addFromSearch('${escapeHtml(result.url)}')" ${isQueueLoading ? 'disabled' : ''}>
-                                                ${isQueueLoading ? icons.spinnerSmall : icons.plus} Queue
+                                                ${isQueueLoading ? icons.spinnerSmall : icons.plus} A la cola
                                             </button>
                                             <button class="btn-sm btn-secondary${isPlaylistLoading ? ' loading' : ''}" onclick="addToPlaylist('${escapeHtml(result.url)}')" ${isPlaylistLoading ? 'disabled' : ''}>
-                                                ${isPlaylistLoading ? icons.spinnerSmall : icons.plus} Playlist
+                                                ${isPlaylistLoading ? icons.spinnerSmall : icons.plus} A la lista
                                             </button>
                                             ${state.isInAppRemote ? `
                                             <div style="position: relative;">
-                                                <button class="btn-sm btn-secondary" onclick="toggleLibraryPicker('${escapeHtml(result.url)}')" title="Save to My Library">
+                                                <button class="btn-sm btn-secondary" onclick="toggleLibraryPicker('${escapeHtml(result.url)}')" title="Guardar en mi biblioteca">
                                                     ${icons.save}
                                                 </button>
                                                 ${state.libraryPickerOpenFor === result.url ? `
                                                 <div class="dropdown-menu">
-                                                    <div class="dropdown-header">Save to Collection</div>
+                                                    <div class="dropdown-header">Guardar en lista</div>
                                                     ${state.localPlaylists.map(pl => `
                                                         <button class="dropdown-item" onclick="commitSaveToLibrary('${escapeHtml(result.url)}', '${pl.id}')">
                                                             ${escapeHtml(pl.name)}
@@ -1518,7 +1523,7 @@
                                                     `).join('')}
                                                     <div class="dropdown-divider"></div>
                                                     <button class="dropdown-item create-new" onclick="createLocalCollection('${escapeHtml(result.url)}')">
-                                                        ${icons.plus} New Collection
+                                                        ${icons.plus} Nueva lista
                                                     </button>
                                                 </div>
                                                 ` : ''}
@@ -1538,7 +1543,7 @@
 
                 ${!state.searching && state.searchResults.length === 0 && state.searchQuery ? `
                     <div class="empty-state">
-                        <p>No results found</p>
+                        <p>No se encontraron resultados</p>
                     </div>
                 ` : ''
                 }
@@ -1550,8 +1555,8 @@
                 return `
             <div class="empty-state">
                         <div class="empty-state-icon">${icons.list}</div>
-                        <p>Queue is empty</p>
-                        <p style="font-size: 13px; margin-top: 8px;">Search for songs to add them</p>
+                        <p>La cola está vacía</p>
+                        <p style="font-size: 13px; margin-top: 8px;">Busca canciones para agregarlas</p>
                     </div>
             `;
             }
@@ -1567,16 +1572,16 @@
                             <img class="queue-thumb" src="${song.thumbnailUrl || `https://i.ytimg.com/vi/${song.youtubeId}/hqdefault.jpg`}" alt="">
                             <div class="queue-info">
                                 <div class="queue-title">${escapeHtml(song.title)}</div>
-                                <div class="queue-meta">${escapeHtml(song.addedBy || 'Guest')}</div>
+                                <div class="queue-meta">${escapeHtml(song.addedBy || 'Invitado')}</div>
                             </div>
                             <div class="queue-actions${isAnyMoveLoading ? ' actions-loading' : ''}">
-                                <button class="queue-action-btn" onclick="moveQueueItem('${song.id}', 'up')" title="Move up" ${isAnyMoveLoading ? 'disabled' : ''}>
+                                <button class="queue-action-btn" onclick="moveQueueItem('${song.id}', 'up')" title="Subir" ${isAnyMoveLoading ? 'disabled' : ''}>
                                     ${icons.chevronUp}
                                 </button>
-                                <button class="queue-action-btn" onclick="moveQueueItem('${song.id}', 'down')" title="Move down" ${isAnyMoveLoading ? 'disabled' : ''}>
+                                <button class="queue-action-btn" onclick="moveQueueItem('${song.id}', 'down')" title="Bajar" ${isAnyMoveLoading ? 'disabled' : ''}>
                                     ${icons.chevronDown}
                                 </button>
-                                <button class="queue-action-btn delete${isRemoveLoading ? ' loading' : ''}" onclick="removeFromQueue('${song.id}')" title="Remove" ${isRemoveLoading ? 'disabled' : ''}>
+                                <button class="queue-action-btn delete${isRemoveLoading ? ' loading' : ''}" onclick="removeFromQueue('${song.id}')" title="Quitar" ${isRemoveLoading ? 'disabled' : ''}>
                                     ${isRemoveLoading ? icons.spinnerSmall : icons.trash}
                                 </button>
                             </div>
@@ -1591,7 +1596,7 @@
             const downloadNote = !state.isInAppRemote ? `
             <div class="playlist-web-note">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
-                    <span>Personal Playlists are not available in Web Remote. Download the app <a href="https://noju.pythonanywhere.com/karaokenatin/" target="_blank" rel="noopener">here</a>.</span>
+                    <span>Las listas personales no están disponibles en el control web. Descarga la app <a href="https://noju.pythonanywhere.com/karaokenatin/" target="_blank" rel="noopener">aquí</a>.</span>
                 </div>
             ` : '';
 
@@ -1600,8 +1605,8 @@
                     ${downloadNote}
         <div class="empty-state">
             <div class="empty-state-icon">${icons.music}</div>
-            <p>No playlists available</p>
-            <p style="font-size: 13px; margin-top: 8px;">Add songs to playlists from search results</p>
+            <p>No hay listas disponibles</p>
+            <p style="font-size: 13px; margin-top: 8px;">Agrega canciones a las listas desde los resultados de búsqueda</p>
         </div>
         `;
             }
@@ -1622,7 +1627,7 @@
         </div>
                 ${songs.length === 0 ? `
                     <div class="empty-state">
-                        <p>No songs in "${escapeHtml(active.name)}"</p>
+                        <p>No hay canciones en "${escapeHtml(active.name)}"</p>
                     </div>
                 ` : `
                 <section class="queue-list">
@@ -1635,20 +1640,20 @@
                             <img class="queue-thumb" src="${song.thumbnailUrl || `https://i.ytimg.com/vi/${song.youtubeId}/hqdefault.jpg`}" alt="">
                             <div class="queue-info">
                                 <div class="queue-title">${escapeHtml(song.title)}</div>
-                                <div class="queue-meta">${escapeHtml(song.artist || 'Unknown Artist')}</div>
+                                <div class="queue-meta">${escapeHtml(song.artist || 'Artista desconocido')}</div>
                             </div>
                             <div class="queue-actions">
-                                <button class="btn-sm btn-primary${isP2QLoading ? ' loading' : ''}" onclick="playlistToQueue('${active.id}','${song.id}')" title="Add to queue" ${isP2QLoading ? 'disabled' : ''}>
-                                    ${isP2QLoading ? icons.spinnerSmall : icons.plus} Queue
+                                <button class="btn-sm btn-primary${isP2QLoading ? ' loading' : ''}" onclick="playlistToQueue('${active.id}','${song.id}')" title="Agregar a la cola" ${isP2QLoading ? 'disabled' : ''}>
+                                    ${isP2QLoading ? icons.spinnerSmall : icons.plus} A la cola
                                 </button>
                                 ${state.isInAppRemote ? `
                                 <div style="position: relative;">
-                                    <button class="btn-sm btn-secondary" onclick="toggleLibraryPicker('pl_${song.id}')" title="Save to My Library">
+                                    <button class="btn-sm btn-secondary" onclick="toggleLibraryPicker('pl_${song.id}')" title="Guardar en mi biblioteca">
                                         ${icons.save}
                                     </button>
                                     ${state.libraryPickerOpenFor === 'pl_' + song.id ? `
                                     <div class="dropdown-menu">
-                                        <div class="dropdown-header">Save to Collection</div>
+                                        <div class="dropdown-header">Guardar en lista</div>
                                         ${state.localPlaylists.map(pl => `
                                             <button class="dropdown-item" onclick="commitSaveToLibrary('https://www.youtube.com/watch?v=${song.youtubeId}', '${pl.id}')">
                                                 ${escapeHtml(pl.name)}
@@ -1656,13 +1661,13 @@
                                         `).join('')}
                                         <div class="dropdown-divider"></div>
                                         <button class="dropdown-item create-new" onclick="createLocalCollection('https://www.youtube.com/watch?v=${song.youtubeId}')">
-                                            ${icons.plus} New Collection
+                                            ${icons.plus} Nueva lista
                                         </button>
                                     </div>
                                     ` : ''}
                                 </div>
                                 ` : ''}
-                                <button class="queue-action-btn delete${isRemoveLoading ? ' loading' : ''}" onclick="removeFromPlaylist('${active.id}','${song.id}')" title="Remove from playlist" ${isRemoveLoading ? 'disabled' : ''}>
+                                <button class="queue-action-btn delete${isRemoveLoading ? ' loading' : ''}" onclick="removeFromPlaylist('${active.id}','${song.id}')" title="Quitar de la lista" ${isRemoveLoading ? 'disabled' : ''}>
                                     ${isRemoveLoading ? icons.spinnerSmall : icons.trash}
                                 </button>
                             </div>
@@ -1678,9 +1683,9 @@
                 return `
                     <div class="empty-state">
                         <div class="empty-state-icon">${icons.music}</div>
-                        <p>Your library is empty</p>
+                        <p>Tu biblioteca está vacía</p>
                         <button class="retry-btn" onclick="createLocalCollection()" style="margin-top: 16px;">
-                            ${icons.plus} New Collection
+                            ${icons.plus} Nueva lista
                         </button>
                     </div>
                 `;
@@ -1701,19 +1706,19 @@
             return `
                 <section class="playlist-header">
                     <div class="playlist-info">
-                        <h2>My Library</h2>
+                        <h2>Mi biblioteca</h2>
                         <div class="playlist-meta">
-                            ${state.localPlaylists.length} Collections • ${activeCollection.songs.length} Songs Total
+                            ${state.localPlaylists.length} listas • ${activeCollection.songs.length} canciones en total
                         </div>
                     </div>
                     <div class="header-actions" style="display: flex; gap: 4px;">
-                        <button class="icon-btn" onclick="importLibrary()" title="Import Collection">
+                        <button class="icon-btn" onclick="importLibrary()" title="Importar lista">
                             ${icons.import}
                         </button>
-                        <button class="icon-btn" onclick="exportLibrary('${activeCollection.id}')" title="Export Collection">
+                        <button class="icon-btn" onclick="exportLibrary('${activeCollection.id}')" title="Exportar lista">
                             ${icons.export}
                         </button>
-                        <button class="icon-btn" onclick="createLocalCollection()" title="New Collection">
+                        <button class="icon-btn" onclick="createLocalCollection()" title="Nueva lista">
                             ${icons.plus}
                         </button>
                     </div>
@@ -1723,7 +1728,7 @@
                     <div class="search-input-wrapper" style="background: var(--bg-secondary); border-radius: 99px; padding: 8px 16px; display: flex; align-items: center; gap: 8px;">
                         <span style="color: var(--text-tertiary);">${icons.search}</span>
                         <input type="text" 
-                               placeholder="Filter ${escapeHtml(activeCollection.name)}..." 
+                               placeholder="Filtrar ${escapeHtml(activeCollection.name)}…" 
                                value="${escapeHtml(state.librarySearchQuery || '')}"
                                oninput="state.librarySearchQuery = this.value; render();"
                                style="background: transparent; border: none; color: var(--text-primary); flex: 1; outline: none; font-size: 16px;">
@@ -1749,7 +1754,7 @@
                 <section class="queue-list">
                     ${songs.length === 0 ? `
                         <div class="empty-state" style="padding: 32px 0;">
-                            <p style="font-size: 14px;">${state.librarySearchQuery ? 'No matches found' : 'No songs in this collection'}</p>
+                            <p style="font-size: 14px;">${state.librarySearchQuery ? 'No se encontraron coincidencias' : 'No hay canciones en esta lista'}</p>
                         </div>
                     ` : songs.map((song) => {
                 const isLib2QueueLoading = state.loadingActions.has('lib2q_' + song.id + ' ');
@@ -1758,13 +1763,13 @@
                             <img class="queue-thumb" src="${song.thumbnailUrl || `https://i.ytimg.com/vi/${song.youtubeId}/hqdefault.jpg`}" alt="">
                             <div class="queue-info">
                                 <div class="queue-title">${escapeHtml(song.title)}</div>
-                                <div class="queue-artist">${escapeHtml(song.artist || 'Unknown Artist')}</div>
+                                <div class="queue-artist">${escapeHtml(song.artist || 'Artista desconocido')}</div>
                             </div>
                             <div class="queue-actions">
-                                <button class="queue-action-btn" onclick="libraryToQueue('${song.id}', '${song.youtubeId}')" title="Add to Queue" ${isLib2QueueLoading ? 'disabled' : ''}>
+                                <button class="queue-action-btn" onclick="libraryToQueue('${song.id}', '${song.youtubeId}')" title="Agregar a la cola" ${isLib2QueueLoading ? 'disabled' : ''}>
                                     ${isLib2QueueLoading ? icons.spinnerSmall : icons.plus}
                                 </button>
-                                <button class="queue-action-btn delete" onclick="removeFromLibrary('${activeCollection.id}', '${song.id}')" title="Remove">
+                                <button class="queue-action-btn delete" onclick="removeFromLibrary('${activeCollection.id}', '${song.id}')" title="Quitar">
                                     ${icons.trash}
                                 </button>
                             </div>
@@ -1821,7 +1826,7 @@
             const rs = state.roomState || {};
             const playlists = rs.playlists || [];
             const collectionId = playlists.length > 0 ? playlists[state.activeCollectionIdx || 0].id : null;
-            if (!collectionId) { showToast('No playlist available', 'error'); return; }
+            if (!collectionId) { showToast('No hay lista disponible', 'error'); return; }
             const actionKey = `playlist_${url} `;
             if (state.loadingActions.has(actionKey)) return;
             state.loadingActions.add(actionKey);
@@ -1850,7 +1855,7 @@
         // --- Library Logic ---
 
         function createLocalCollection() {
-            const name = prompt("Enter collection name:");
+            const name = prompt('Ingresa el nombre de la lista:');
             if (name && name.trim()) {
                 window.parent.postMessage({
                     type: 'CREATE_LOCAL_COLLECTION',
@@ -1870,7 +1875,7 @@
 
         function commitSaveToLibrary(url, collectionId) {
             state.libraryPickerOpenFor = null;
-            showToast('Saving to library...');
+            showToast('Guardando en la biblioteca…');
             window.parent.postMessage({
                 type: 'ADD_TO_LOCAL_PLAYLIST',
                 payload: { youtubeUrl: url, collectionId }
@@ -1879,7 +1884,7 @@
         }
 
         function createLocalCollection(thenAddUrl) {
-            const name = prompt('Enter collection name:');
+            const name = prompt('Ingresa el nombre de la lista:');
             if (!name) return;
 
             window.parent.postMessage({
@@ -1901,7 +1906,7 @@
         }
 
         function removeFromLibrary(collectionId, songId) {
-            if (!confirm('Remove from library?')) return;
+            if (!confirm('¿Quitar de la biblioteca?')) return;
             window.parent.postMessage({
                 type: 'REMOVE_FROM_LOCAL_PLAYLIST',
                 payload: { collectionId, songId }
@@ -1920,7 +1925,7 @@
         }
 
         function openInYouTube(url) {
-            showModal('Open in YouTube?', 'This will open the video in a new tab.', () => {
+            showModal('¿Abrir en YouTube?', 'Esto abrirá el video en una nueva pestaña.', () => {
                 window.open(url, '_blank');
             });
         }
@@ -1961,15 +1966,15 @@
         function showInviteQR() {
             // Get the current URL (the remote UI URL) which others can use to join
             const inviteUrl = window.location.href;
-            showModal('Invite Friends', `
+            showModal('Invitar amigos', `
                 <div style="text-align: center;">
-                    <p style="margin-bottom: 16px; color: var(--text-secondary);">Share this link or scan the QR code:</p>
+                    <p style="margin-bottom: 16px; color: var(--text-secondary);">Comparte este enlace o escanea el código QR:</p>
                     <div id="invite-qr" style="background: white; padding: 16px; border-radius: 12px; display: inline-block; margin-bottom: 16px;"></div>
                     <div style="background: var(--bg-tertiary); padding: 12px; border-radius: 8px; word-break: break-all; font-size: 12px; color: var(--text-primary);">
                         ${inviteUrl}
                     </div>
                     <button onclick="copyInviteLink()" style="margin-top: 12px; padding: 8px 16px; background: var(--accent); color: white; border: none; border-radius: 20px; cursor: pointer; font-weight: 600;">
-                        Copy Link
+                        Copiar enlace
                     </button>
                 </div>
             `, null);
@@ -1985,16 +1990,16 @@
                         colorLight: '#ffffff'
                     });
                 } else if (qrContainer) {
-                    qrContainer.innerHTML = '<p style="color: #666; padding: 20px;">QR Code</p>';
+                    qrContainer.innerHTML = '<p style="color: #666; padding: 20px;">Código QR</p>';
                 }
             }, 100);
         }
 
         function copyInviteLink() {
             navigator.clipboard.writeText(window.location.href).then(() => {
-                showToast('Link copied!');
+                showToast('¡Enlace copiado!');
             }).catch(() => {
-                showToast('Failed to copy');
+                showToast('No se pudo copiar');
             });
         }
 
@@ -2003,7 +2008,7 @@
                 dataConn.send(cmd);
                 console.log('[Remote] Sent:', cmd);
             } else {
-                showToast('Not connected');
+                showToast('Sin conexión');
             }
         }
 
@@ -2052,6 +2057,10 @@
         let reconnectTimer = null;
         let connectionAttemptId = 0;   // monotonically increasing
         let isConnecting = false;      // guard against overlapping attempts
+        // True once JOIN_SUCCESS arrives — i.e. we are past the socket.io
+        // phase and into WebRTC negotiation. The 10s failsafe must NOT tear
+        // down a connection that is already negotiating ICE.
+        let joinedSuccess = false;
 
         function cleanup() {
             if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
@@ -2069,6 +2078,7 @@
                 socket = null;
             }
             isConnecting = false;
+            joinedSuccess = false;
         }
 
         /**
@@ -2157,12 +2167,23 @@
             socket.on('JOIN_SUCCESS', (data) => {
                 if (isStale()) return;
                 console.log('[Remote] Joined room:', data);
-                initPeer(data.hostPeerId, attemptId);
+                joinedSuccess = true;
+                try {
+                    initPeer(data.hostPeerId, attemptId);
+                } catch (e) {
+                    console.error('[Remote] peer init failed:', e);
+                    state.lastError = 'Falló la inicialización de Peer: ' + (e && e.message ? e.message : String(e));
+                    isConnecting = false;
+                    state.screen = 'disconnected';
+                    state.reconnecting = false;
+                    render();
+                }
             });
 
             socket.on('JOIN_REJECTED', (data) => {
                 if (isStale()) return;
                 console.error('[Remote] Rejected:', data);
+                state.lastError = (data && data.reason) ? 'Rechazado: ' + data.reason : 'Rechazado por el anfitrión';
                 isConnecting = false;
                 state.screen = 'disconnected';
                 state.reconnecting = false;
@@ -2180,20 +2201,29 @@
                 console.log('[Remote] Socket disconnected');
                 if (state.screen === 'connected') {
                     scheduleReconnect();
+                } else if (state.screen === 'loading' && !joinedSuccess) {
+                    // Socket died before we even joined — the join phase is over.
+                    scheduleReconnect();
                 }
             });
 
             socket.on('connect_error', (err) => {
                 if (isStale()) return;
                 console.error('[Remote] Socket error:', err.message || err);
+                state.lastError = 'No se pudo alcanzar al anfitrión: ' + (err && err.message ? err.message : String(err));
                 scheduleReconnect();
             });
 
 
-            // Failsafe timeout: if connection stalls (e.g. PeerJS hangs), force retry
-            // This runs on EVERY attempt, ensuring we don't get stuck in 'loading' forever.
+            // Failsafe timeout: if the socket phase stalls (never connect /
+            // never join), force a retry. Once JOIN_SUCCESS arrives we are past
+            // this phase — WebRTC negotiation may legitimately take longer than
+            // 10s on a slow device, and tearing the Peer down mid-negotiation
+            // is exactly what made real joins look broken. Failures during the
+            // WebRTC phase are handled by the peer/dataConn listeners below.
             setTimeout(() => {
                 if (isStale()) return;
+                if (joinedSuccess) return;
                 // If we are still trying to connect (loading) but haven't succeeded
                 if (state.screen === 'loading') {
                     console.log('[Remote] Connection attempt timed out (10s), retrying...');
@@ -2251,7 +2281,14 @@
             peer.on('open', (myId) => {
                 if (isStale()) { try { peer.destroy(); } catch (e) { } return; }
                 console.log('[Remote] My peer ID:', myId);
-                dataConn = peer.connect(hostPeerId, { reliable: true });
+                try {
+                    dataConn = peer.connect(hostPeerId, { reliable: true });
+                } catch (e) {
+                    console.error('[Remote] peer.connect threw:', e);
+                    state.lastError = 'Falló la conexión de Peer: ' + (e && e.message ? e.message : String(e));
+                    scheduleReconnect();
+                    return;
+                }
 
                 dataConn.on('open', () => {
                     if (isStale()) return;
@@ -2262,7 +2299,7 @@
                     state.reconnecting = false;
                     isConnecting = false;
                     render();
-                    showToast(wasReconnecting ? 'Reconnected!' : 'Connected!');
+                    showToast(wasReconnecting ? '¡Reconectado!' : '¡Conectado!');
                 });
 
                 dataConn.on('data', (data) => {
@@ -2300,16 +2337,16 @@
                                 const newPlaylistTotal = (newState.playlists || []).reduce((s, c) => s + (c.songs ? c.songs.length : 0), 0);
 
                                 if (newQueueLen > oldQueueLen) {
-                                    showToast('Song added to queue');
+                                    showToast('Canción agregada a la cola');
                                 } else if (newQueueLen < oldQueueLen) {
-                                    showToast('Song removed from queue');
+                                    showToast('Canción quitada de la cola');
                                 } else if (newPlaylistTotal > oldPlaylistTotal) {
-                                    showToast('Song added to playlist');
+                                    showToast('Canción agregada a la lista');
                                 } else if (newPlaylistTotal < oldPlaylistTotal) {
-                                    showToast('Removed from playlist');
+                                    showToast('Quitada de la lista');
                                 } else if (state.loadingActions.size > 0) {
                                     // Queue reordering or other action
-                                    showToast('Done!');
+                                    showToast('¡Listo!');
                                 }
                             }
 
@@ -2342,7 +2379,7 @@
                 dataConn.on('close', () => {
                     if (isStale()) return;
                     console.log('[Remote] Data connection closed');
-                    if (state.screen === 'connected') {
+                    if (state.screen === 'connected' || state.screen === 'loading') {
                         scheduleReconnect();
                     }
                 });
@@ -2350,6 +2387,11 @@
                 dataConn.on('error', (err) => {
                     if (isStale()) return;
                     console.error('[Remote] Data conn error:', err);
+                    // A WebRTC channel that never opens still fails the attempt.
+                    if (state.screen === 'connected' || state.screen === 'loading') {
+                        state.lastError = 'Falló el canal WebRTC: ' + (err && err.message ? err.message : String(err));
+                        scheduleReconnect();
+                    }
                 });
             });
 
@@ -2391,16 +2433,6 @@
             // Request initial data
             window.parent.postMessage({ type: 'REQUEST_LOCAL_PLAYLISTS' }, '*');
         }
-
-        // DEBUG: Verify InApp mode
-        setTimeout(() => {
-            if (state.isInAppRemote) {
-                showToast('Guest Mode detected');
-            } else {
-                // Show URL for debugging
-                showToast('Web Mode: ' + window.location.href);
-            }
-        }, 2000);
 
         render();
     </script>

@@ -50,7 +50,7 @@ const ScoringOverlay = ({ score, onComplete, songTitle }: ScoringOverlayProps) =
                             {score}
                         </div>
                         <div className="score-label">
-                            {isFullCoverage ? '🎤 Sang the whole song!' : 'Great performance!'}
+                            {isFullCoverage ? '🎤 ¡Cantaste toda la canción!' : '¡Gran presentación!'}
                         </div>
                         {songTitle && (
                             <div className="score-song-title">{songTitle}</div>
@@ -60,7 +60,7 @@ const ScoringOverlay = ({ score, onComplete, songTitle }: ScoringOverlayProps) =
 
                 {phase === 'exit' && (
                     <div className="scoring-exit">
-                        <span>Next song...</span>
+                        <span>Siguiente canción…</span>
                     </div>
                 )}
             </div>

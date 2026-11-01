@@ -8,6 +8,15 @@ import { processCommand, getRoomState } from '../lib/commands';
 import { hashToken, generateRoomId, generateJoinToken } from '../lib/security';
 
 /**
+ * Diagnostics surfaced in the TV debug overlay (TvKeyDebug). Tracks how far
+ * the host P2P bootstrap got, since a stalled stage leaves the QR spinner
+ * forever with no other visible symptom.
+ */
+function reportPeerStatus(status: string) {
+    (window as unknown as { __KNT_PEER_STATUS?: string }).__KNT_PEER_STATUS = status;
+}
+
+/**
  * Hook to manage PeerJS host and WebRTC connections
  */
 export function usePeerHost() {
@@ -86,8 +95,23 @@ export function usePeerHost() {
         const setup = async () => {
         // The broker lives in our own Rust web server, so we need its port
         // before constructing the Peer.
-        const port = await invoke<number>('get_server_port');
+        // `start_host_server()` binds the port from another effect that runs
+        // concurrently with this hook. If this hook wins the race, the port is
+        // still 0 and Peer dials localhost:0 — no 'open', no ROOM_CREATED, and
+        // the QR spinner never resolves. That race is why the QR appeared on
+        // some launches and spun forever on others. Wait for the real port.
+        let port = 0;
+        for (let i = 0; i < 100 && port === 0 && !cancelled; i++) {
+            port = await invoke<number>('get_server_port');
+            if (port === 0) await new Promise((r) => setTimeout(r, 100));
+        }
+        reportPeerStatus(`port=${port}`);
         if (cancelled) return;
+        if (port === 0) {
+            reportPeerStatus('server port never became available');
+            console.error('[PeerHost] server port never became available');
+            return;
+        }
 
         // Point PeerJS at that broker. Omitting host/port/path makes PeerJS
         // fall back to its public 0.peerjs.com cloud, which put the WebRTC
@@ -109,6 +133,7 @@ export function usePeerHost() {
 
         peerInstance.on('open', async (peerId) => {
             console.log('[PeerHost] Peer ID:', peerId);
+            reportPeerStatus(`peer open id=${peerId}`);
 
             // Generate room credentials
             const roomId = generateRoomId();
@@ -122,6 +147,7 @@ export function usePeerHost() {
             socketInstance.emit('CREATE_ROOM', { roomId, joinTokenHash, hostPeerId: peerId });
 
             socketInstance.on('ROOM_CREATED', async () => {
+                reportPeerStatus('ROOM_CREATED received');
                 console.log('[PeerHost] Room created on signaling server');
                 // Get the base URL (http://ip:port) from the backend
                 try {
@@ -147,13 +173,17 @@ export function usePeerHost() {
         });
 
         peerInstance.on('error', (err) => {
+            reportPeerStatus(`peer error: ${(err as Error)?.message ?? err}`);
             console.error('[PeerHost] Peer error:', err);
         });
 
         setPeer(peerInstance);
         };
 
-        setup().catch((e) => console.error('[PeerHost] Setup failed:', e));
+        setup().catch((e) => {
+            reportPeerStatus(`setup failed: ${e}`);
+            console.error('[PeerHost] Setup failed:', e);
+        });
 
         return () => {
             // Guards against the effect's async setup finishing after unmount,

@@ -6,7 +6,7 @@ REM KaraokeNatin Build Script - Android & Windows
 REM ============================================================
 REM Usage:
 REM   build.bat              - Build both Android + Windows
-REM   build.bat android      - Build Android APK only
+REM   build.bat android      - Build Android APK only (universal: arm64-v8a + armeabi-v7a)
 REM   build.bat windows      - Build Windows installers only
 REM   build.bat sign         - Sign an existing Android APK
 REM   build.bat android_signed - Build Android APK and invoke signing
@@ -112,7 +112,7 @@ if "%TARGET%"=="android_signed" goto :build_android
 if "%TARGET%"=="all" goto :build_android
 
 :build_android
-echo [3/4] Building Android APK (arm64)...
+echo [3/4] Building Android APK (universal: arm64-v8a + armeabi-v7a)...
 echo       Using cargo-ndk to cross-compile Rust...
 
 cd /d "%TAURI_DIR%"
@@ -120,14 +120,16 @@ cd /d "%TAURI_DIR%"
 REM --- Clear old native libraries to prevent stale/locked files ---
 set JNILIBS_ARM64=%ANDROID_GEN%\app\src\main\jniLibs\arm64-v8a
 if exist "%JNILIBS_ARM64%\libapp_lib.so" del /q "%JNILIBS_ARM64%\libapp_lib.so"
-echo       Cleared old native library.
+set JNILIBS_ARM=%ANDROID_GEN%\app\src\main\jniLibs\armeabi-v7a
+if exist "%JNILIBS_ARM%\libapp_lib.so" del /q "%JNILIBS_ARM%\libapp_lib.so"
+echo       Cleared old native libraries.
 
-cargo ndk -t arm64-v8a -o gen/android/app/src/main/jniLibs build --release --lib --features tauri/custom-protocol
+cargo ndk -t arm64-v8a -t armeabi-v7a -o gen/android/app/src/main/jniLibs build --release --lib --features tauri/custom-protocol
 if errorlevel 1 (
     echo ERROR: cargo-ndk build failed.
     exit /b 1
 )
-echo       Native library compiled OK.
+echo       Native library compiled OK (arm64-v8a + armeabi-v7a).
 
 REM --- Copy frontend assets to Android project ---
 echo       Copying frontend assets to Android...
@@ -141,9 +143,9 @@ if errorlevel 1 (
 )
 echo       Frontend assets copied OK.
 
-echo       Running Gradle assembleArm64Release...
+echo       Running Gradle assembleUniversalRelease (ABIs: arm64-v8a, armeabi-v7a)...
 cd /d "%ANDROID_GEN%"
-call gradlew.bat assembleArm64Release -x rustBuildArm64Release -x rustBuildUniversalRelease --warning-mode=summary
+call gradlew.bat assembleUniversalRelease -PabiList=arm64-v8a,armeabi-v7a -x rustBuildArm64Release -x rustBuildArmRelease -x rustBuildX86Release -x rustBuildX86_64Release -x rustBuildUniversalRelease --warning-mode=summary
 if errorlevel 1 (
     echo ERROR: Gradle build failed.
     exit /b 1
@@ -151,8 +153,8 @@ if errorlevel 1 (
 
 REM --- Sign the APK if keystore exists ---
 if "%TARGET%"=="android_signed" goto :sign_apk
-set APK_UNSIGNED=%ANDROID_GEN%\app\build\outputs\apk\arm64\release\app-arm64-release-unsigned.apk
-set APK_SIGNED=%PROJECT_ROOT%KaraokeNatin-arm64-release.apk
+set APK_UNSIGNED=%ANDROID_GEN%\app\build\outputs\apk\universal\release\app-universal-release-unsigned.apk
+set APK_SIGNED=%PROJECT_ROOT%KaraokeNatin-universal-release.apk
 
 if exist "%KEYSTORE%" (
     echo       Signing APK...
@@ -201,8 +203,8 @@ echo  KaraokeNatin - Sign Android APK
 echo ============================================================
 echo.
 
-set APK_UNSIGNED=%ANDROID_GEN%\app\build\outputs\apk\arm64\release\app-arm64-release-unsigned.apk
-set APK_SIGNED=%PROJECT_ROOT%KaraokeNatin-arm64-release.apk
+set APK_UNSIGNED=%ANDROID_GEN%\app\build\outputs\apk\universal\release\app-universal-release-unsigned.apk
+set APK_SIGNED=%PROJECT_ROOT%KaraokeNatin-universal-release.apk
 
 if not exist "%APK_UNSIGNED%" (
     echo ERROR: No unsigned APK found. Run "build.bat android" first.

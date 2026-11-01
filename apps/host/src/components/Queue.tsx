@@ -33,14 +33,16 @@ const Icons = {
 };
 
 /** Focusable queue action button for DPAD navigation */
-const QueueActionButton = ({ children, onClick, disabled, className, title }: {
+const QueueActionButton = ({ children, onClick, disabled, className, title, focusKey }: {
     children: React.ReactNode;
     onClick: () => void;
     disabled?: boolean;
     className?: string;
     title?: string;
+    focusKey?: string;
 }) => {
     const { ref, focused } = useFocusable({
+        focusKey,
         onEnterPress: () => { if (!disabled) onClick(); },
     });
     return (
@@ -58,7 +60,8 @@ const QueueActionButton = ({ children, onClick, disabled, className, title }: {
 };
 
 const Queue = ({ songs }: QueueProps) => {
-    const { ref, focusKey } = useFocusable();
+    // Container only: its QueueActionButtons are the real focus targets.
+    const { ref, focusKey } = useFocusable({ focusable: false });
 
     const handleMoveUp = async (songId: string) => {
         try {
@@ -107,10 +110,10 @@ const Queue = ({ songs }: QueueProps) => {
     if (songs.length === 0) {
         return (
             <div className="queue-display">
-                <h2 className="queue-header">Up Next</h2>
+                <h2 className="queue-header">A continuación</h2>
                 <div className="queue-empty">
-                    <p>No songs in queue</p>
-                    <p className="queue-empty-hint">Add songs from your remote</p>
+                    <p>No hay canciones en la cola</p>
+                    <p className="queue-empty-hint">Agrega canciones desde el control remoto</p>
                 </div>
             </div>
         );
@@ -120,7 +123,7 @@ const Queue = ({ songs }: QueueProps) => {
         <FocusContext.Provider value={focusKey}>
             <div ref={ref} className="queue-display">
                 <h2 className="queue-header">
-                    Up Next <span className="queue-count">{songs.length}</span>
+                    A continuación <span className="queue-count">{songs.length}</span>
                 </h2>
 
                 <div className="queue-list">
@@ -147,30 +150,34 @@ const Queue = ({ songs }: QueueProps) => {
 
                             <div className="queue-actions">
                                 <QueueActionButton
+                                    focusKey={`queue-${song.id}-top`}
                                     onClick={() => handleMoveToTop(song.id)}
                                     disabled={index === 0}
-                                    title="Play next"
+                                    title="Reproducir a continuación"
                                 >
                                     {Icons.chevronsUp}
                                 </QueueActionButton>
                                 <QueueActionButton
+                                    focusKey={`queue-${song.id}-up`}
                                     onClick={() => handleMoveUp(song.id)}
                                     disabled={index === 0}
-                                    title="Move up"
+                                    title="Subir"
                                 >
                                     {Icons.chevronUp}
                                 </QueueActionButton>
                                 <QueueActionButton
+                                    focusKey={`queue-${song.id}-down`}
                                     onClick={() => handleMoveDown(song.id)}
                                     disabled={index === songs.length - 1}
-                                    title="Move down"
+                                    title="Bajar"
                                 >
                                     {Icons.chevronDown}
                                 </QueueActionButton>
                                 <QueueActionButton
+                                    focusKey={`queue-${song.id}-remove`}
                                     className="queue-action-btn-danger"
                                     onClick={() => handleRemove(song.id)}
-                                    title="Remove"
+                                    title="Quitar"
                                 >
                                     {Icons.trash}
                                 </QueueActionButton>

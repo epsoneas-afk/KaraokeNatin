@@ -18,6 +18,12 @@ Two independent jobs, `build-windows` and `build-android`. Each installs depende
 | Windows | `pnpm --filter @karaokenatin/host run tauri:build` | `windows-nsis-installer` (`.exe`), `windows-msi-installer` (`.msi`) |
 | Android | `tauri android init` then `tauri android build` | `android-apk-universal`, `android-apk-all` |
 
+The universal Android APK packages the two ARM ABIs — `arm64-v8a` and
+`armeabi-v7a` (see `RustPlugin.kt`'s default `abiList`). It therefore installs
+and runs on both modern phones/tablets and older 32-bit ARM devices and
+Android TV boxes. To also cover x86/x86_64 (e.g. emulators), pass
+`-PabiList=x86,x86_64` to Gradle or extend `abiList`.
+
 Both are uploaded as workflow run artifacts (Actions tab → the run → Artifacts), not published anywhere. There is no tagging step, no GitHub Release, no signing. That's not a gap introduced here — the original never had any of that either.
 
 ## Known state, from this repo's own CI history

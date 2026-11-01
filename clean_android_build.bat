@@ -14,12 +14,20 @@ if exist "%TAURI_DIR%\target\aarch64-linux-android" (
 ) else (
     echo     Target dir already clean.
 )
+if exist "%TAURI_DIR%\target\armv7-linux-androideabi" (
+    rmdir /S /Q "%TAURI_DIR%\target\armv7-linux-androideabi"
+    echo     Deleted target\armv7-linux-androideabi
+)
 
 echo.
 echo [2/3] Deleting compiled JNI libraries...
 if exist "%TAURI_DIR%\gen\android\app\src\main\jniLibs\arm64-v8a" (
     rmdir /S /Q "%TAURI_DIR%\gen\android\app\src\main\jniLibs\arm64-v8a"
     echo     Deleted jniLibs\arm64-v8a
+)
+if exist "%TAURI_DIR%\gen\android\app\src\main\jniLibs\armeabi-v7a" (
+    rmdir /S /Q "%TAURI_DIR%\gen\android\app\src\main\jniLibs\armeabi-v7a"
+    echo     Deleted jniLibs\armeabi-v7a
 )
 
 echo.

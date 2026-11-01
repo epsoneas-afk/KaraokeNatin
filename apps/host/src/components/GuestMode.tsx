@@ -68,11 +68,11 @@ export default function GuestMode({ onClose, onConnect }: GuestModeProps) {
             setScanning(false);
             const msg = err instanceof Error ? err.message : String(err);
             if (msg.includes('NotAllowedError') || msg.includes('Permission')) {
-                setError('Camera permission denied. Use "Paste URL" instead.');
+                setError('Permiso de cámara denegado. Usa "Pegar URL" en su lugar.');
             } else if (msg.includes('NotFoundError') || msg.includes('no camera')) {
-                setError('No camera found. Use "Paste URL" instead.');
+                setError('No se encontró cámara. Usa "Pegar URL" en su lugar.');
             } else {
-                setError(`Camera error: ${msg}`);
+                setError(`Error de cámara: ${msg}`);
             }
         }
     };
@@ -83,7 +83,7 @@ export default function GuestMode({ onClose, onConnect }: GuestModeProps) {
             stopScanner();
             onConnect(url.toString());
         } catch {
-            setError('Invalid QR code. Expected a URL like http://192.168.x.x:PORT');
+            setError('Código QR inválido. Se esperaba una URL como http://192.168.x.x:PUERTO');
         }
     };
 
@@ -94,7 +94,7 @@ export default function GuestMode({ onClose, onConnect }: GuestModeProps) {
                 setHostUrl(text.trim());
             }
         } catch {
-            setError('Could not read clipboard. Paste manually instead.');
+            setError('No se pudo leer el portapapeles. Pega manualmente.');
         }
     };
 
@@ -106,7 +106,7 @@ export default function GuestMode({ onClose, onConnect }: GuestModeProps) {
             stopScanner();
             onConnect(url.toString());
         } catch {
-            setError('Invalid URL. Expected format: http://192.168.x.x:PORT');
+            setError('URL inválida. Formato esperado: http://192.168.x.x:PUERTO');
         }
     };
 
@@ -114,8 +114,8 @@ export default function GuestMode({ onClose, onConnect }: GuestModeProps) {
         <div className="guest-mode-overlay">
             {/* Header */}
             <div className="guest-mode-header">
-                <span className="guest-mode-title">Join a Room</span>
-                <button className="guest-mode-close" onClick={onClose} title="Close">
+                <span className="guest-mode-title">Unirse a una sala</span>
+                <button className="guest-mode-close" onClick={onClose} title="Cerrar">
                     <X size={18} />
                 </button>
             </div>
@@ -124,7 +124,7 @@ export default function GuestMode({ onClose, onConnect }: GuestModeProps) {
             <div className="guest-mode-body">
                 <div className="guest-mode-scan">
                     <p className="guest-mode-desc">
-                        Scan the QR code shown on the host screen, or paste the room URL to join.
+                        Escanea el código QR que aparece en la pantalla del anfitrión, o pega la URL de la sala para unirte.
                     </p>
 
                     {error && <div className="guest-mode-error">{error}</div>}
@@ -134,25 +134,25 @@ export default function GuestMode({ onClose, onConnect }: GuestModeProps) {
                         <div className="guest-scanner-container">
                             <div id={scannerContainerId} className="guest-scanner-viewport" />
                             <button className="btn-sm btn-secondary guest-scanner-cancel" onClick={stopScanner}>
-                                Cancel Scan
+                                Cancelar escaneo
                             </button>
                         </div>
                     ) : !pasteMode ? (
                         <div className="guest-mode-actions">
                             <button className="guest-action-card" onClick={startScanner}>
                                 <QrCode size={32} />
-                                <span className="guest-action-label">Scan QR Code</span>
-                                <span className="guest-action-hint">Use your camera to scan the host's QR</span>
+                                <span className="guest-action-label">Escanear código QR</span>
+                                <span className="guest-action-hint">Usa tu cámara para escanear el QR del anfitrión</span>
                             </button>
                             <button className="guest-action-card" onClick={() => setPasteMode(true)}>
                                 <ClipboardPaste size={32} />
-                                <span className="guest-action-label">Paste URL</span>
-                                <span className="guest-action-hint">Enter or paste the host's room URL</span>
+                                <span className="guest-action-label">Pegar URL</span>
+                                <span className="guest-action-hint">Ingresa o pega la URL de la sala del anfitrión</span>
                             </button>
                         </div>
                     ) : (
                         <div className="guest-paste-form">
-                            <label className="guest-mode-label">Room URL</label>
+                            <label className="guest-mode-label">URL de la sala</label>
                             <div className="guest-paste-row">
                                 <input
                                     type="text"
@@ -169,7 +169,7 @@ export default function GuestMode({ onClose, onConnect }: GuestModeProps) {
                                 <button
                                     className="btn-icon btn-paste"
                                     onClick={handlePasteFromClipboard}
-                                    title="Paste from clipboard"
+                                    title="Pegar desde el portapapeles"
                                 >
                                     <ClipboardPaste size={18} />
                                 </button>
@@ -179,14 +179,14 @@ export default function GuestMode({ onClose, onConnect }: GuestModeProps) {
                                     className="btn btn-secondary"
                                     onClick={() => { setPasteMode(false); setError(''); }}
                                 >
-                                    Back
+                                    Atrás
                                 </button>
                                 <button
                                     className="btn btn-primary"
                                     onClick={handleManualConnect}
                                     disabled={!hostUrl.trim()}
                                 >
-                                    Connect
+                                    Conectar
                                 </button>
                             </div>
                         </div>

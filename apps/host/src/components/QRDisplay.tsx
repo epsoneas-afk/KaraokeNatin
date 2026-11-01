@@ -1,11 +1,40 @@
 import { QRCodeSVG } from 'qrcode.react';
 import { useEffect, useState } from 'react';
-import { invoke } from '@tauri-apps/api/core';
+import { useFocusable } from '@noriginmedia/norigin-spatial-navigation';
 
 interface QRDisplayProps {
     url: string | null;
     roomId: string | null;
 }
+
+/** D-pad reachable copy button (plain buttons are invisible to norigin). */
+const CopyButton = ({ onCopy, copied }: { onCopy: () => void; copied: boolean }) => {
+    const { ref, focused } = useFocusable({
+        focusKey: 'host-qr-copy',
+        onEnterPress: onCopy,
+    });
+    return (
+        <button
+            ref={ref}
+            onClick={onCopy}
+            className={`qr-copy-btn ${focused ? 'dpad-focused' : ''}`}
+            style={{
+                width: '100%',
+                padding: '10px 16px',
+                background: copied ? 'var(--success)' : 'var(--bg-tertiary)',
+                color: copied ? 'white' : 'var(--text-primary)',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontWeight: 500,
+                fontSize: '14px',
+                transition: 'all 0.2s'
+            }}
+        >
+            {copied ? '✓ ¡Copiado!' : 'Copiar enlace'}
+        </button>
+    );
+};
 
 const QRDisplay = ({ url, roomId: _roomId }: QRDisplayProps) => {
     const [displayUrl, setDisplayUrl] = useState<string>('');
@@ -14,36 +43,24 @@ const QRDisplay = ({ url, roomId: _roomId }: QRDisplayProps) => {
 
     useEffect(() => {
         // `url` comes from usePeerHost and already carries the join token
-        // (?t=...). Prefer it: a URL fetched from get_qr_url has no token, and
-        // since signaling now verifies tokens on every join, a guest scanning
-        // a tokenless QR would simply be rejected.
+        // (?t=...). The QR MUST NOT render without it: `get_qr_url` returns a
+        // tokenless URL, and since signaling verifies tokens on every join
+        // (signaling.rs JOIN_ROOM), a guest scanning a tokenless QR would be
+        // rejected instantly and every Retry on that page would fail forever.
+        // Hold a loading state until the token URL exists.
         if (url) {
             setDisplayUrl(url);
             setLoading(false);
             return;
         }
 
-        // Fallback only for the window between mount and the room being
-        // created. Shows the right host address so the panel is not blank.
+        // Keep the mount→room-created window blank rather than showing a QR
+        // that guests cannot join with.
         let cancelled = false;
-        const fetchQrUrl = async () => {
-            try {
-                const qrUrl = await invoke<string>('get_qr_url');
-                if (!cancelled) setDisplayUrl(qrUrl);
-            } catch (error) {
-                console.error('Failed to get QR URL:', error);
-                try {
-                    const port = await invoke<number>('get_server_port');
-                    if (!cancelled) setDisplayUrl(`http://localhost:${port}`);
-                } catch {
-                    if (!cancelled) setDisplayUrl(window.location.origin);
-                }
-            } finally {
-                if (!cancelled) setLoading(false);
-            }
+        const holdForToken = async () => {
+            if (!cancelled) setLoading(true);
         };
-
-        fetchQrUrl();
+        holdForToken();
         return () => { cancelled = true; };
     }, [url]);
 
@@ -76,7 +93,7 @@ const QRDisplay = ({ url, roomId: _roomId }: QRDisplayProps) => {
                     animation: 'spin 1s linear infinite'
                 }}></div>
                 <p style={{ marginTop: '12px', color: 'var(--text-secondary)', fontSize: '14px' }}>
-                    Loading...
+                    Cargando…
                 </p>
             </div>
         );
@@ -121,23 +138,7 @@ const QRDisplay = ({ url, roomId: _roomId }: QRDisplayProps) => {
             </div>
 
             {/* Copy Button */}
-            <button
-                onClick={copyLink}
-                style={{
-                    width: '100%',
-                    padding: '10px 16px',
-                    background: copied ? 'var(--success)' : 'var(--bg-tertiary)',
-                    color: copied ? 'white' : 'var(--text-primary)',
-                    border: 'none',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    fontWeight: 500,
-                    fontSize: '14px',
-                    transition: 'all 0.2s'
-                }}
-            >
-                {copied ? '✓ Copied!' : 'Copy Link'}
-            </button>
+            <CopyButton onCopy={copyLink} copied={copied} />
 
             {/* Instructions */}
             <p style={{
@@ -146,7 +147,7 @@ const QRDisplay = ({ url, roomId: _roomId }: QRDisplayProps) => {
                 textAlign: 'center',
                 margin: 0
             }}>
-                Scan QR code or share link to join
+                Escanea el código QR o comparte el enlace para unirte
             </p>
         </div>
     );

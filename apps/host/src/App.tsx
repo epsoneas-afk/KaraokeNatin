@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { init, useFocusable, FocusContext } from '@noriginmedia/norigin-spatial-navigation';
+import { init, useFocusable, FocusContext, SpatialNavigation } from '@noriginmedia/norigin-spatial-navigation';
 import Player from './components/Player';
 import ControlPanel from './components/ControlPanel';
 import GuestMode from './components/GuestMode';
@@ -22,6 +22,19 @@ init({
   visualDebug: false,
 });
 
+// Android TV remotes report raw Android key codes (KEYCODE_DPAD_* = 19-23,
+// KEYCODE_ENTER = 66) instead of the web-standard arrows/Enter that norigin
+// listens for by default. Extend the keymap so D-pad navigation also works
+// when those raw codes reach the DOM.
+SpatialNavigation.setKeyMap({
+  left: [37, 21, 'ArrowLeft'],
+  right: [39, 22, 'ArrowRight'],
+  up: [38, 19, 'ArrowUp'],
+  down: [40, 20, 'ArrowDown'],
+  enter: [13, 66, 23, 'Enter'],
+  space: [32, ' ', 'Spacebar'],
+});
+
 interface SearchResult {
   url: string;
   title: string;
@@ -42,7 +55,8 @@ function HostView({ onBack }: { onBack: () => void }) {
   const [isMobile, setIsMobile] = useState(false);
   const [activeTab, setActiveTab] = useState<'player' | 'controls'>('player');
 
-  const { ref, focusKey } = useFocusable();
+  // Container only: focus must land on the real controls, not this wrapper.
+  const { ref, focusKey } = useFocusable({ focusable: false });
 
   useEffect(() => {
     // Start web server lazily, then initialize room
@@ -56,10 +70,14 @@ function HostView({ onBack }: { onBack: () => void }) {
     })();
   }, []);
 
-  // Detect mobile/small screen
+  // Detect mobile/small screen. Intentionally width-only: `'ontouchstart' in
+  // window` is TRUE on every Android WebView (including Android TV), so the
+  // old check made the TV fall into the touch-only mobile layout where the
+  // D-pad does nothing. A TV is always wide, so it now gets the desktop
+  // (keyboard/D-pad navigable) layout.
   useEffect(() => {
     const checkMobile = () => {
-      const mobile = window.innerWidth <= 768 || 'ontouchstart' in window;
+      const mobile = window.innerWidth <= 768;
       setIsMobile(mobile);
       if (mobile && window.innerHeight > window.innerWidth) {
         setActiveTab('controls');
@@ -73,7 +91,7 @@ function HostView({ onBack }: { onBack: () => void }) {
   // Global DPAD handler for Android TV back button
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' || e.key === 'GoBack') {
+      if (e.key === 'Escape') {
         if (!isPanelCollapsed && !isMobile) {
           setIsPanelCollapsed(true);
           e.preventDefault();
@@ -117,7 +135,7 @@ function HostView({ onBack }: { onBack: () => void }) {
       <div className="app-loading">
         <div className="app-loading-title">🎤 KaraokeNatin</div>
         <div className="app-loading-spinner"></div>
-        <div className="app-loading-hint">Starting host…</div>
+        <div className="app-loading-hint">Iniciando anfitrión…</div>
       </div>
     );
   }
@@ -129,10 +147,10 @@ function HostView({ onBack }: { onBack: () => void }) {
         {isMobile && (
           <div className="mobile-tab-bar">
             <button className={`mobile-tab ${activeTab === 'player' ? 'active' : ''}`} onClick={() => handleTabSwitch('player')}>
-              <Clapperboard size={16} /> Player
+              <Clapperboard size={16} /> Reproductor
             </button>
             <button className={`mobile-tab ${activeTab === 'controls' ? 'active' : ''}`} onClick={() => handleTabSwitch('controls')}>
-              <SlidersHorizontal size={16} /> Controls
+              <SlidersHorizontal size={16} /> Controles
             </button>
           </div>
         )}
@@ -141,8 +159,8 @@ function HostView({ onBack }: { onBack: () => void }) {
         <div className={`main-area ${isMobile && activeTab !== 'player' ? 'hidden-mobile' : ''}`}>
           <Player />
           <footer className="yt-footer-host">
-            Videos are played via YouTube embedding. All videos are subject to YouTube's{' '}
-            <a href="https://www.youtube.com/t/terms" target="_blank" rel="noopener noreferrer">Terms of Service</a>.
+            Los videos se reproducen mediante la inserción de YouTube. Todos los videos están sujetos a los{' '}
+            <a href="https://www.youtube.com/t/terms" target="_blank" rel="noopener noreferrer">Términos de servicio</a>.
           </footer>
         </div>
 
@@ -176,10 +194,23 @@ function HostView({ onBack }: { onBack: () => void }) {
 }
 
 // ---- Guest-mode wrapper ----
-function GuestView({ onBack }: { onBack: () => void }) {
-  const [guestHostUrl, setGuestHostUrl] = useState<string | null>(null);
-  const [guestIframeLoaded, setGuestIframeLoaded] = useState(false);
-  const [showScanner, setShowScanner] = useState(true);
+function GuestView({
+  onBack,
+  guestHostUrl,
+  setGuestHostUrl,
+  guestIframeLoaded,
+  setGuestIframeLoaded,
+  showScanner,
+  setShowScanner,
+}: {
+  onBack: () => void;
+  guestHostUrl: string | null;
+  setGuestHostUrl: (v: string | null) => void;
+  guestIframeLoaded: boolean;
+  setGuestIframeLoaded: (v: boolean) => void;
+  showScanner: boolean;
+  setShowScanner: (v: boolean) => void;
+}) {
   const guestIframeRef = useRef<HTMLIFrameElement>(null);
 
   const handleGuestConnect = useCallback((hostUrl: string) => {
@@ -245,7 +276,7 @@ function GuestView({ onBack }: { onBack: () => void }) {
           // Also send success toast trigger
           guestIframeRef.current.contentWindow?.postMessage({
             type: 'TOAST',
-            message: 'Saved to library'
+            message: 'Guardado en biblioteca'
           }, '*');
         }
         else if (type === 'REMOVE_FROM_LOCAL_PLAYLIST') {
@@ -273,7 +304,7 @@ function GuestView({ onBack }: { onBack: () => void }) {
             }, '*');
             guestIframeRef.current.contentWindow?.postMessage({
               type: 'TOAST',
-              message: 'Collection imported'
+              message: 'Lista importada'
             }, '*');
           }
         }
@@ -297,16 +328,16 @@ function GuestView({ onBack }: { onBack: () => void }) {
         <div className="guest-iframe-area">
           <div className="guest-banner">
             <span className="guest-banner-label">
-              {guestIframeLoaded ? 'Connected to remote host' : 'Connecting...'}
+              {guestIframeLoaded ? 'Conectado al anfitrión remoto' : 'Conectando…'}
             </span>
             <button className="btn-sm btn-secondary guest-banner-btn" onClick={handleGuestDisconnect}>
-              <Unplug size={14} /> Disconnect
+              <Unplug size={14} /> Desconectar
             </button>
           </div>
           {!guestIframeLoaded && (
             <div className="guest-iframe-loading">
               <div className="spinner" />
-              <p>Loading remote control...</p>
+              <p>Cargando control remoto…</p>
             </div>
           )}
           <iframe
@@ -315,18 +346,18 @@ function GuestView({ onBack }: { onBack: () => void }) {
             className="guest-inline-iframe"
             style={{ opacity: guestIframeLoaded ? 1 : 0 }}
             onLoad={() => setGuestIframeLoaded(true)}
-            title="Remote Control"
+            title="Control remoto"
             allow="microphone; camera"
           />
           <footer className="yt-footer-host">
-            Videos are played via YouTube embedding. All videos are subject to YouTube's{' '}
-            <a href="https://www.youtube.com/t/terms" target="_blank" rel="noopener noreferrer">Terms of Service</a>.
+            Los videos se reproducen mediante la inserción de YouTube. Todos los videos están sujetos a los{' '}
+            <a href="https://www.youtube.com/t/terms" target="_blank" rel="noopener noreferrer">Términos de servicio</a>.
           </footer>
         </div>
       ) : showScanner ? (
         <div className="guest-scan-wrapper">
           <button className="mode-back-btn" onClick={onBack}>
-            <ArrowLeft size={16} /> Back
+            <ArrowLeft size={16} /> Atrás
           </button>
           <GuestMode
             onClose={onBack}
@@ -342,8 +373,34 @@ function GuestView({ onBack }: { onBack: () => void }) {
 function App() {
   const [appMode, setAppMode] = useState<AppMode>('select');
   const [showHelp, setShowHelp] = useState(false);
+  const [guestHostUrl, setGuestHostUrl] = useState<string | null>(null);
+  const [guestIframeLoaded, setGuestIframeLoaded] = useState(false);
+  const [showScanner, setShowScanner] = useState(true);
 
   const handleBack = useCallback(() => setAppMode('select'), []);
+
+  // Android TV hardware BACK is intercepted natively (MainActivity) and
+  // re-emitted as a 'GoBack' DOM event so it cannot hard-exit the app.
+  // Route it to the same action as the in-app Back button.
+  useEffect(() => {
+    const onBack = (e: KeyboardEvent) => {
+      if (e.key === 'GoBack' || e.keyCode === 4) {
+        e.preventDefault();
+        setAppMode('select');
+      }
+    };
+    window.addEventListener('keydown', onBack);
+    return () => window.removeEventListener('keydown', onBack);
+  }, []);
+
+  // Keep the native BACK handler in sync: only the selection screen exits the
+  // app, every other screen routes BACK to navigation (setAppMode above).
+  useEffect(() => {
+    const bridge = (window as unknown as {
+      KNTAndroid?: { setAtRoot?: (v: boolean) => void };
+    }).KNTAndroid;
+    bridge?.setAtRoot?.(appMode === 'select');
+  }, [appMode]);
 
   if (appMode === 'select') {
     return (
@@ -356,8 +413,8 @@ function App() {
         <button
           className="help-fab"
           onClick={() => setShowHelp(true)}
-          aria-label="Help and diagnostics"
-          title="Help and diagnostics"
+          aria-label="Ayuda y diagnóstico"
+          title="Ayuda y diagnóstico"
         >
           <HelpCircle size={22} />
         </button>
@@ -374,7 +431,17 @@ function App() {
     return <Library onBack={handleBack} />;
   }
 
-  return <GuestView onBack={handleBack} />;
+  return (
+    <GuestView
+      onBack={handleBack}
+      guestHostUrl={guestHostUrl}
+      setGuestHostUrl={setGuestHostUrl}
+      guestIframeLoaded={guestIframeLoaded}
+      setGuestIframeLoaded={setGuestIframeLoaded}
+      showScanner={showScanner}
+      setShowScanner={setShowScanner}
+    />
+  );
 }
 
 export default App;

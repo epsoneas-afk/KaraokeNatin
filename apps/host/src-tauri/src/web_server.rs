@@ -147,6 +147,31 @@ pub async fn serve_web_server(listener: std::net::TcpListener) -> Result<(), Str
     // needs cross-origin access to hit this backend directly; release builds
     // (the only ones guests ever actually use) don't need it and shouldn't
     // have it.
+    // The host app's own webview is cross-origin relative to this server: it
+    // loads from a Tauri scheme (tauri://localhost or http(s)://tauri.localhost)
+    // while this server answers on 127.0.0.1:<port>. Its socket.io bootstrap
+    // must be able to read responses, or ROOM_CREATED never arrives and the
+    // host's QR code spins forever. Guests load the UI straight from this
+    // server and are same-origin. Allow the known host-webview origins rather
+    // than Any, so a malicious LAN page cannot read this server's responses.
+    #[cfg(not(debug_assertions))]
+    let app = app.layer({
+        let host_origins: Vec<axum::http::HeaderValue> = [
+            "http://tauri.localhost",
+            "https://tauri.localhost",
+            "tauri://localhost",
+            "http://localhost",
+            "http://127.0.0.1",
+        ]
+        .iter()
+        .filter_map(|o| axum::http::HeaderValue::from_str(o).ok())
+        .collect();
+        CorsLayer::new()
+            .allow_origin(host_origins)
+            .allow_methods(Any)
+            .allow_headers(Any)
+    });
+
     #[cfg(debug_assertions)]
     let app = app.layer(
         CorsLayer::new()

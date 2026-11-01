@@ -59,10 +59,10 @@ const HelpDialog = ({ onClose }: HelpDialogProps) => {
             ref={overlayRef}
         >
             <div className="help-content">
-                <h2 id="help-title" style={{ marginBottom: '16px', color: 'var(--text-primary, #fff)' }}>Help & Support</h2>
+                <h2 id="help-title" style={{ marginBottom: '16px', color: 'var(--text-primary, #fff)' }}>Ayuda y soporte</h2>
                 <p style={{ marginBottom: '24px', color: 'var(--text-secondary, #ccc)' }}>
-                    Encountered an issue? Help us fix it by reporting it on GitHub.
-                    Please attach the logs from the logs folder to your issue.
+                    ¿Encontraste un problema? Ayúdanos a solucionarlo reportándolo en GitHub.
+                    Adjunta los registros de la carpeta de logs a tu reporte.
                 </p>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -70,14 +70,14 @@ const HelpDialog = ({ onClose }: HelpDialogProps) => {
                         className="btn-secondary"
                         onClick={handleOpenLogs}
                     >
-                        📂 Open Logs Folder
+                        📂 Abrir carpeta de registros
                     </button>
 
                     <button
                         className="btn-primary"
                         onClick={handleReportIssue}
                     >
-                        🐛 Report on GitHub
+                        🐛 Reportar en GitHub
                     </button>
                 </div>
 
@@ -86,7 +86,7 @@ const HelpDialog = ({ onClose }: HelpDialogProps) => {
                     onClick={onClose}
                     style={{ marginTop: '24px' }}
                 >
-                    Close
+                    Cerrar
                 </button>
             </div>
 

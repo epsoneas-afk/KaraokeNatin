@@ -76,6 +76,31 @@ const Icons = {
     )
 };
 
+/** D-pad reachable fullscreen toggle (plain buttons are invisible to norigin). */
+const FullscreenButton = ({ isFullscreen, onToggle }: { isFullscreen: boolean; onToggle: () => void }) => {
+    const { ref, focused } = useFocusable({
+        focusKey: 'player-fullscreen',
+        onEnterPress: onToggle,
+    });
+    return (
+        <button
+            ref={ref}
+            className={`btn-icon btn-fullscreen ${focused ? 'dpad-focused' : ''}`}
+            onClick={onToggle}
+            title={isFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
+            tabIndex={0}
+            style={isFullscreen ? {
+                position: 'absolute',
+                top: 16,
+                right: 16,
+                zIndex: 100
+            } : undefined}
+        >
+            {isFullscreen ? Icons.minimize : Icons.maximize}
+        </button>
+    );
+};
+
 const Player = () => {
     const playerRef = useRef<HTMLDivElement>(null);
     const containerRef = useRef<HTMLDivElement | null>(null);
@@ -107,7 +132,8 @@ const Player = () => {
     // the next stop()/song change.
     const micActiveRef = useRef(false);
 
-    const { ref: focusRef, focusKey } = useFocusable();
+    // Container only: the player chrome has no focusable controls of its own.
+    const { ref: focusRef, focusKey } = useFocusable({ focusable: false });
 
 
     // Handle fullscreen change events
@@ -454,7 +480,7 @@ const Player = () => {
             {!isAPIReady ? (
                 <div className="player-idle">
                     <div className="spinner" style={{ width: 40, height: 40 }}></div>
-                    <span>Loading player...</span>
+                    <span>Cargando reproductor…</span>
                 </div>
             ) : (
                 <>
@@ -481,9 +507,9 @@ const Player = () => {
                             background: 'var(--bg-primary, #000)'
                         }}>
                             <div className="player-idle-icon">{Icons.music}</div>
-                            <div className="player-idle-text">No song playing</div>
+                            <div className="player-idle-text">No hay canción en reproducción</div>
                             <p style={{ color: 'var(--text-muted)', marginTop: 8 }}>
-                                Add songs from the remote or control panel
+                                Agrega canciones desde el control remoto o el panel
                             </p>
                         </div>
                     )}
@@ -512,20 +538,7 @@ const Player = () => {
                     flexDirection: 'column'
                 } : undefined}
             >
-                <button
-                    className="btn-icon btn-fullscreen"
-                    onClick={toggleFullscreen}
-                    title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
-                    tabIndex={0}
-                    style={isFullscreen ? {
-                        position: 'absolute',
-                        top: 16,
-                        right: 16,
-                        zIndex: 100
-                    } : undefined}
-                >
-                    {isFullscreen ? Icons.minimize : Icons.maximize}
-                </button>
+                <FullscreenButton isFullscreen={isFullscreen} onToggle={toggleFullscreen} />
 
                 <div className="player-inner" style={isFullscreen ? { flex: 1 } : undefined}>
                     {playerContent}
@@ -535,7 +548,7 @@ const Player = () => {
                     <div className="player-song-info">
                         <h3 className="player-song-title">{currentSong.title}</h3>
                         <p className="player-song-meta">
-                            {currentSong.artist || 'Unknown Artist'} • Added by {currentSong.addedBy}
+                            {currentSong.artist || 'Artista desconocido'} • Agregado por {currentSong.addedBy}
                         </p>
                     </div>
                 )}

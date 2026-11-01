@@ -70,5 +70,5 @@ The host binds `0.0.0.0` on a random port in 49152–65535 and advertises its LA
 |---|---|
 | Windows | 10 1803+, WebView2 runtime, 4 GB RAM |
 | Linux | glibc 2.31+, GTK 3, WebKit2GTK 4.1, 4 GB RAM |
-| Android | 7.0 (API 24), arm64-v8a, 2 GB RAM |
+| Android | 7.0 (API 24), arm64-v8a / armeabi-v7a, 2 GB RAM |
 | Guest devices | Any browser with WebRTC — no install |

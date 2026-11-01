@@ -125,17 +125,39 @@ body {
 }
 
 /* ===== DPAD / Focus Styles (Android TV) ===== */
+/* The cursor has to be readable from across the room, so the focused node
+   gets a solid accent ring plus a glow, and grows noticeably. */
 .dpad-focused,
 *:focus-visible {
-  outline: none;
-  box-shadow: var(--focus-ring) !important;
+  outline: none !important;
+  box-shadow: 0 0 0 4px var(--accent), 0 0 24px rgba(29, 161, 242, 0.85) !important;
   border-color: var(--accent) !important;
 }
 
 .dpad-focused {
-  transform: scale(1.05);
+  transform: scale(1.12);
   z-index: 10;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+/* Focused buttons fill with the accent color and flip their icon/text to
+   white so it is impossible to miss. The search input is excluded because a
+   solid fill would swallow the text being typed. */
+.btn-icon.dpad-focused,
+.invite-btn.dpad-focused,
+.queue-action-btn.dpad-focused,
+.btn-sm.dpad-focused,
+.btn-primary.dpad-focused,
+.btn-secondary.dpad-focused,
+.panel-toggle.dpad-focused,
+.search-btn.dpad-focused,
+.qr-copy-btn.dpad-focused,
+.btn-fullscreen.dpad-focused,
+.mode-card.dpad-focused,
+.guest-action-card.dpad-focused,
+.collection-tab.dpad-focused {
+  background: var(--accent) !important;
+  color: #ffffff !important;
 }
 
 /* ===== Main Layout ===== */
@@ -295,6 +317,10 @@ body {
   display: flex;
   gap: 8px;
   justify-content: center;
+}
+
+.player-controls-row + .player-controls-row {
+  margin-top: 8px;
 }
 
 /* ===== Invite Button ===== */
@@ -1154,8 +1180,8 @@ body {
   }
 
   .dpad-focused {
-    box-shadow: 0 0 0 4px rgba(29, 161, 242, 0.8) !important;
-    transform: scale(1.08);
+    box-shadow: 0 0 0 5px var(--accent), 0 0 32px rgba(29, 161, 242, 0.9) !important;
+    transform: scale(1.15);
   }
 
   .search-input {

@@ -34,7 +34,7 @@ KaraokeNatin is a local-network karaoke application that lets you enjoy karaoke 
 Check the [Releases](https://github.com/nojukuramu/KaraokeNatin/releases) page for:
 - **Windows** — `.exe` (NSIS) or `.msi` installer
 - **Linux** — `.deb` or `.AppImage`
-- **Android** — `.apk` for phones, tablets, and Android TV (arm64)
+- **Android** — universal `.apk` for phones, tablets, and Android TV (arm64-v8a + armeabi-v7a)
 - *Note for Android TV*: You may need to use a file manager app to install the APK once downloaded.
 
 ### Build from Source
@@ -111,9 +111,9 @@ pnpm tauri build
 
 # 4b. Android — cross-compile with cargo-ndk, then Gradle
 cd apps/host/src-tauri
-cargo ndk -t arm64-v8a -o gen/android/app/src/main/jniLibs build --release --lib --features tauri/custom-protocol
+cargo ndk -t arm64-v8a -t armeabi-v7a -o gen/android/app/src/main/jniLibs build --release --lib --features tauri/custom-protocol
 cd gen/android
-.\gradlew.bat assembleArm64Release -x rustBuildArm64Release -x rustBuildUniversalRelease
+./gradlew.bat assembleUniversalRelease -PabiList=arm64-v8a,armeabi-v7a -x rustBuildArm64Release -x rustBuildArmRelease -x rustBuildX86Release -x rustBuildX86_64Release -x rustBuildUniversalRelease
 ```
 
 ### Output Locations
@@ -122,7 +122,7 @@ cd gen/android
 |----------|------|----------|
 | Windows (NSIS) | `KaraokeNatin_0.2.0_x64-setup.exe` | `apps/host/src-tauri/target/release/bundle/nsis/` |
 | Windows (MSI) | `KaraokeNatin_0.2.0_x64_en-US.msi` | `apps/host/src-tauri/target/release/bundle/msi/` |
-| Android (arm64) | `app-arm64-release-unsigned.apk` | `apps/host/src-tauri/gen/android/app/build/outputs/apk/arm64/release/` |
+| Android (universal) | `app-universal-release-unsigned.apk` (arm64-v8a + armeabi-v7a) | `apps/host/src-tauri/gen/android/app/build/outputs/apk/universal/release/` |
 
 ## 🏗️ Project Structure
 

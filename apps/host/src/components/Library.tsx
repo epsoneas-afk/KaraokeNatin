@@ -55,7 +55,7 @@ function PlaylistSongRow({ index, style, songs, onRemove }: RowComponentProps<Pl
             <button
                 className="playlist-remove-btn"
                 onClick={() => onRemove(song.id)}
-                title="Remove from library"
+                title="Quitar de la biblioteca"
             >
                 <Trash2 size={14} />
             </button>
@@ -163,7 +163,7 @@ export default function Library({ onBack }: LibraryProps) {
         const collection = collections.find(c => c.id === collectionId);
         if (!collection) return;
 
-        if (!confirm(`Delete "${collection.name}"?`)) return;
+        if (!confirm(`¿Eliminar "${collection.name}"?`)) return;
 
         try {
             await playlistDeleteCollection(collectionId);
@@ -240,7 +240,7 @@ export default function Library({ onBack }: LibraryProps) {
         } catch (error) {
             console.error('[Library] Save to file failed:', error);
             if (typeof error === 'string' && error.includes('cancelled')) return;
-            alert('Failed to save file');
+            alert('No se pudo guardar el archivo');
         }
     };
 
@@ -251,7 +251,7 @@ export default function Library({ onBack }: LibraryProps) {
         } catch (error) {
             console.error('[Library] Load from file failed:', error);
             if (typeof error === 'string' && error.includes('cancelled')) return;
-            alert('Failed to load file');
+            alert('No se pudo cargar el archivo');
         }
     };
 
@@ -268,10 +268,10 @@ export default function Library({ onBack }: LibraryProps) {
         <div className="library-page">
             {/* Header */}
             <div className="library-header">
-                <button className="btn-icon" onClick={onBack} title="Back to mode selection">
+                <button className="btn-icon" onClick={onBack} title="Volver a selección de modo">
                     <ArrowLeft size={18} />
                 </button>
-                <h1 className="library-title">My Library</h1>
+                <h1 className="library-title">Mi biblioteca</h1>
                 <button className="btn-icon" onClick={toggleTheme}>
                     {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
                 </button>
@@ -283,13 +283,13 @@ export default function Library({ onBack }: LibraryProps) {
                     <input
                         type="text"
                         className="search-input"
-                        placeholder="Search for songs..."
+                        placeholder="Buscar canciones…"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         onFocus={() => setHostInputFocused(true)}
                         onBlur={() => setHostInputFocused(false)}
                     />
-                    <button type="submit" className="btn-icon" title="Search">
+                    <button type="submit" className="btn-icon" title="Buscar">
                         <Search size={18} />
                     </button>
                 </form>
@@ -300,13 +300,13 @@ export default function Library({ onBack }: LibraryProps) {
                 {searching && (
                     <div className="search-loading">
                         <div className="spinner"></div>
-                        <p>Searching...</p>
+                        <p>Buscando…</p>
                     </div>
                 )}
 
                 {!searching && searchResults.length > 0 && (
                     <div className="library-section">
-                        <div className="section-label">Search Results</div>
+                        <div className="section-label">Resultados de búsqueda</div>
                         <div className="search-results">
                             {searchResults.map((result) => {
                                 const isLoading = addingToLibrary.has(result.url);
@@ -328,19 +328,19 @@ export default function Library({ onBack }: LibraryProps) {
                                                         disabled={isLoading}
                                                     >
                                                         {isLoading ? (
-                                                            <>Saving...</>
+                                                            <>Guardando…</>
                                                         ) : isAdded ? (
-                                                            <>✓ Saved</>
+                                                            <>✓ Guardado</>
                                                         ) : (
                                                             <>
-                                                                <Plus size={14} /> Add to Library <ChevronDown size={12} />
+                                                                <Plus size={14} /> Agregar a biblioteca <ChevronDown size={12} />
                                                             </>
                                                         )}
                                                     </button>
 
                                                     {pickerOpenFor === result.url && (
                                                         <div className="collection-picker">
-                                                            <div className="collection-picker-title">Add to Collection</div>
+                                                            <div className="collection-picker-title">Agregar a lista</div>
                                                             {collections.map(col => (
                                                                 <button
                                                                     key={col.id}
@@ -357,7 +357,7 @@ export default function Library({ onBack }: LibraryProps) {
                                                                 <div className="collection-picker-new">
                                                                     <input
                                                                         type="text"
-                                                                        placeholder="Collection name..."
+                                                                        placeholder="Nombre de la lista…"
                                                                         value={newCollectionNameInPicker}
                                                                         onChange={(e) => setNewCollectionNameInPicker(e.target.value)}
                                                                         onFocus={() => setHostInputFocused(true)}
@@ -376,7 +376,7 @@ export default function Library({ onBack }: LibraryProps) {
                                                                         className="btn-sm btn-primary"
                                                                         onClick={() => handleCreateCollectionInPicker(result.url)}
                                                                     >
-                                                                        Create
+                                                                        Crear
                                                                     </button>
                                                                 </div>
                                                             ) : (
@@ -384,7 +384,7 @@ export default function Library({ onBack }: LibraryProps) {
                                                                     className="collection-picker-item collection-picker-create"
                                                                     onClick={() => setShowNewCollectionInPicker(true)}
                                                                 >
-                                                                    <Plus size={14} /> New Collection
+                                                                    <Plus size={14} /> Nueva lista
                                                                 </button>
                                                             )}
                                                         </div>
@@ -402,14 +402,14 @@ export default function Library({ onBack }: LibraryProps) {
                 {/* Collections Management */}
                 <div className="library-section">
                     <div className="section-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span><Music size={16} style={{ display: 'inline', verticalAlign: '-2px' }} /> Collections ({totalSongs} songs)</span>
+                        <span><Music size={16} style={{ display: 'inline', verticalAlign: '-2px' }} /> Listas ({totalSongs} canciones)</span>
                         <div style={{ display: 'flex', gap: '4px' }}>
                             <button
                                 className="btn-sm btn-secondary"
                                 onClick={handleLoadFromFile}
-                                title="Import from file"
+                                title="Importar desde archivo"
                             >
-                                <Upload size={14} style={{ display: 'inline', verticalAlign: '-2px', marginRight: '4px' }} /> Import
+                                <Upload size={14} style={{ display: 'inline', verticalAlign: '-2px', marginRight: '4px' }} /> Importar
                             </button>
                         </div>
                     </div>
@@ -447,7 +447,7 @@ export default function Library({ onBack }: LibraryProps) {
                         <button
                             className="collection-tab collection-tab-add"
                             onClick={() => setShowNewCollection(true)}
-                            title="Create new collection"
+                            title="Crear nueva lista"
                         >
                             <Plus size={14} />
                         </button>
@@ -458,7 +458,7 @@ export default function Library({ onBack }: LibraryProps) {
                         <div className="library-new-collection">
                             <input
                                 type="text"
-                                placeholder="Collection name..."
+                                placeholder="Nombre de la lista…"
                                 value={newCollectionName}
                                 onChange={(e) => setNewCollectionName(e.target.value)}
                                 onFocus={() => setHostInputFocused(true)}
@@ -479,7 +479,7 @@ export default function Library({ onBack }: LibraryProps) {
                             />
                             <div style={{ display: 'flex', gap: '8px' }}>
                                 <button className="btn-primary" onClick={handleCreateCollection}>
-                                    Create
+                                    Crear
                                 </button>
                                 <button
                                     className="btn-secondary"
@@ -488,7 +488,7 @@ export default function Library({ onBack }: LibraryProps) {
                                         setNewCollectionName('');
                                     }}
                                 >
-                                    Cancel
+                                    Cancelar
                                 </button>
                             </div>
                         </div>
@@ -500,10 +500,10 @@ export default function Library({ onBack }: LibraryProps) {
                             <button
                                 className="btn-sm btn-secondary"
                                 onClick={() => handleToggleVisibility(activeCollection)}
-                                title={activeCollection.visibility === 'public' ? 'Make personal' : 'Make public'}
+                                title={activeCollection.visibility === 'public' ? 'Hacer personal' : 'Hacer pública'}
                             >
                                 {activeCollection.visibility === 'public' ? (
-                                    <><Globe size={13} /> Public</>
+                                    <><Globe size={13} /> Pública</>
                                 ) : (
                                     <><Lock size={13} /> Personal</>
                                 )}
@@ -514,22 +514,22 @@ export default function Library({ onBack }: LibraryProps) {
                                     setRenamingCollectionId(activeCollection.id);
                                     setRenameValue(activeCollection.name);
                                 }}
-                                title="Rename"
+                                title="Renombrar"
                             >
                                 <Pencil size={13} />
                             </button>
                             <button
                                 className="btn-sm btn-secondary"
                                 onClick={() => handleSaveToFile(activeCollection.id)}
-                                title="Export to file"
+                                title="Exportar a archivo"
                             >
-                                <Upload size={13} /> Export
+                                <Upload size={13} /> Exportar
                             </button>
                             {collections.length > 1 && (
                                 <button
                                     className="btn-sm btn-danger-text"
                                     onClick={() => handleDeleteCollection(activeCollection.id)}
-                                    title="Delete collection"
+                                    title="Eliminar lista"
                                 >
                                     <Trash2 size={13} />
                                 </button>
@@ -540,8 +540,8 @@ export default function Library({ onBack }: LibraryProps) {
                     {/* Songs in Active Collection */}
                     {!activeCollection || activeCollection.songs.length === 0 ? (
                         <div className="playlist-empty">
-                            <p>{collections.length === 0 ? 'No collections yet' : 'No songs in this collection'}</p>
-                            <p className="playlist-empty-hint">{collections.length === 0 ? 'Create your first collection above' : 'Add songs from search results'}</p>
+                            <p>{collections.length === 0 ? 'Aún no hay listas' : 'No hay canciones en esta lista'}</p>
+                            <p className="playlist-empty-hint">{collections.length === 0 ? 'Crea tu primera lista arriba' : 'Agrega canciones desde los resultados de búsqueda'}</p>
                         </div>
                     ) : (
                         <List

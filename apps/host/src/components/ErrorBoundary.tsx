@@ -35,9 +35,9 @@ class ErrorBoundary extends Component<Props, State> {
                     color: 'white',
                     fontFamily: 'monospace'
                 }}>
-                    <h1>⚠️ KaraokeNatin Error</h1>
+                    <h1>⚠️ Error de KaraokeNatin</h1>
                     <p style={{ marginTop: '20px', fontSize: '18px' }}>
-                        Something went wrong loading the app.
+                        Algo salió mal al cargar la app.
                     </p>
 
                     <div style={{
@@ -46,7 +46,7 @@ class ErrorBoundary extends Component<Props, State> {
                         background: 'rgba(0,0,0,0.3)',
                         borderRadius: '10px'
                     }}>
-                        <h2>Error Details:</h2>
+                        <h2>Detalles del error:</h2>
                         <pre style={{
                             marginTop: '10px',
                             whiteSpace: 'pre-wrap',
@@ -57,7 +57,7 @@ class ErrorBoundary extends Component<Props, State> {
 
                         {this.state.errorInfo && (
                             <>
-                                <h3 style={{ marginTop: '20px' }}>Stack Trace:</h3>
+                                <h3 style={{ marginTop: '20px' }}>Traza de pila:</h3>
                                 <pre style={{
                                     marginTop: '10px',
                                     fontSize: '12px',
@@ -84,7 +84,7 @@ class ErrorBoundary extends Component<Props, State> {
                             cursor: 'pointer'
                         }}
                     >
-                        Reload App
+                        Recargar app
                     </button>
                 </div>
             );

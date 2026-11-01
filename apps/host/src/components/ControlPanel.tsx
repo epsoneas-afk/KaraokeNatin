@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect, useCallback, useReducer, memo } from 'react';
 import type { RefObject } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { useFocusable, FocusContext } from '@noriginmedia/norigin-spatial-navigation';
+import { useFocusable, FocusContext, SpatialNavigation } from '@noriginmedia/norigin-spatial-navigation';
 import QRDisplay from './QRDisplay';
 import Queue from './Queue';
+import FocusableInput from './FocusableInput';
 import { Song, PlaylistCollection } from '../hooks/useRoomState';
 import { setHostInputFocused } from '../hooks/useRoomState';
 import { saveCollectionToFile, loadCollectionFromFile, getPlaylists, playlistAddSong, playlistCreateCollection, playlistDeleteCollection, playlistRenameCollection, playlistSetVisibility, playlistRemoveSong } from '../lib/commands';
@@ -12,7 +13,7 @@ import {
     ChevronLeft, ChevronRight, Users, Search, Plus, Sun, Moon,
     Play, Pause, SkipForward, Music, Trash2, UserPlus,
     Globe, Lock, Pencil, Upload, Download, ChevronDown, ArrowLeft, Star,
-    Volume2, VolumeX,
+    Volume1, Volume2, VolumeX, Rewind, FastForward,
 } from 'lucide-react';
 
 interface SearchResult {
@@ -56,15 +57,17 @@ export function formatClock(seconds: number): string {
 }
 
 /** Focusable button wrapper for DPAD navigation */
-const FocusableButton = memo(function FocusableButton({ children, onClick, className, style, title, disabled }: {
+const FocusableButton = memo(function FocusableButton({ children, onClick, className, style, title, disabled, focusKey }: {
     children: React.ReactNode;
     onClick?: () => void;
     className?: string;
     style?: React.CSSProperties;
     title?: string;
     disabled?: boolean;
+    focusKey?: string;
 }) {
     const { ref, focused } = useFocusable({
+        focusKey,
         onEnterPress: () => { if (!disabled && onClick) onClick(); },
     });
     return (
@@ -96,6 +99,7 @@ const FocusableButton = memo(function FocusableButton({ children, onClick, class
  */
 const SearchResultRow = memo(function SearchResultRow({
     result,
+    focusKeyPrefix,
     isQueueLoading,
     isQueueAdded,
     isPlaylistLoading,
@@ -125,6 +129,7 @@ const SearchResultRow = memo(function SearchResultRow({
     onCreateLibraryCollection,
 }: {
     result: SearchResult;
+    focusKeyPrefix: string;
     isQueueLoading: boolean;
     isQueueAdded: boolean;
     isPlaylistLoading: boolean;
@@ -172,38 +177,40 @@ const SearchResultRow = memo(function SearchResultRow({
                 <div className="search-result-actions">
                     {/* Add to Queue button */}
                     <FocusableButton
+                        focusKey={`${focusKeyPrefix}-queue`}
                         className={`btn-sm ${isQueueAdded ? 'btn-success' : 'btn-primary'}`}
                         onClick={() => onAddToQueue(result.url)}
                         disabled={isQueueLoading}
                     >
                         {isQueueLoading ? (
-                            <><span className="spinner-tiny"></span> Adding...</>
+                            <><span className="spinner-tiny"></span> Agregando…</>
                         ) : isQueueAdded ? (
-                            <>✓ Queued</>
+                            <>✓ En cola</>
                         ) : (
-                            <><Plus size={14} /> Queue</>
+                            <><Plus size={14} /> A la cola</>
                         )}
                     </FocusableButton>
 
                     {/* Add to Playlist button with picker */}
                     <div className="playlist-picker-wrapper" style={{ position: 'relative' }}>
                         <FocusableButton
+                            focusKey={`${focusKeyPrefix}-playlist`}
                             className={`btn-sm ${isPlaylistAdded ? 'btn-success' : 'btn-secondary'}`}
                             onClick={() => onTogglePicker(result.url)}
                             disabled={isPlaylistLoading}
                         >
                             {isPlaylistLoading ? (
-                                <><span className="spinner-tiny"></span> Adding...</>
+                                <><span className="spinner-tiny"></span> Agregando…</>
                             ) : isPlaylistAdded ? (
-                                <>✓ Saved</>
+                                <>✓ Guardado</>
                             ) : (
-                                <><Music size={14} /> Playlist <ChevronDown size={12} /></>
+                                <><Music size={14} /> Lista <ChevronDown size={12} /></>
                             )}
                         </FocusableButton>
 
                         {pickerOpen && (
                             <div ref={pickerRef} className="collection-picker">
-                                <div className="collection-picker-title">Add to Collection</div>
+                                <div className="collection-picker-title">Agregar a lista</div>
                                 {playlists.map(col => (
                                     <button
                                         key={col.id}
@@ -220,7 +227,7 @@ const SearchResultRow = memo(function SearchResultRow({
                                     <div className="collection-picker-new">
                                         <input
                                             type="text"
-                                            placeholder="Collection name..."
+                                            placeholder="Nombre de la lista…"
                                             value={newCollectionName}
                                             onChange={(e) => onNewCollectionNameChange(e.target.value)}
                                             onFocus={() => setHostInputFocused(true)}
@@ -236,7 +243,7 @@ const SearchResultRow = memo(function SearchResultRow({
                                             className="collection-picker-input"
                                         />
                                         <button className="btn-sm btn-primary" onClick={() => onCreateCollection(result.url)}>
-                                            Create
+                                            Crear
                                         </button>
                                     </div>
                                 ) : (
@@ -244,7 +251,7 @@ const SearchResultRow = memo(function SearchResultRow({
                                         className="collection-picker-item collection-picker-create"
                                         onClick={onShowNewCollection}
                                     >
-                                        <Plus size={14} /> New Collection
+                                        <Plus size={14} /> Nueva lista
                                     </button>
                                 )}
                             </div>
@@ -254,22 +261,23 @@ const SearchResultRow = memo(function SearchResultRow({
                     {/* Add to Library button with picker */}
                     <div className="playlist-picker-wrapper" style={{ position: 'relative' }}>
                         <FocusableButton
+                            focusKey={`${focusKeyPrefix}-library`}
                             className={`btn-sm ${isLibraryAdded ? 'btn-success' : 'btn-secondary'}`}
                             onClick={() => onToggleLibraryPicker(result.url)}
                             disabled={isLibraryLoading}
                         >
                             {isLibraryLoading ? (
-                                <><span className="spinner-tiny"></span> Saving...</>
+                                <><span className="spinner-tiny"></span> Guardando…</>
                             ) : isLibraryAdded ? (
-                                <>✓ In Library</>
+                                <>✓ En biblioteca</>
                             ) : (
-                                <><Star size={14} /> Library <ChevronDown size={12} /></>
+                                <><Star size={14} /> Biblioteca <ChevronDown size={12} /></>
                             )}
                         </FocusableButton>
 
                         {libraryPickerOpen && (
                             <div ref={libraryPickerRef} className="collection-picker">
-                                <div className="collection-picker-title">Save to Library</div>
+                                <div className="collection-picker-title">Guardar en biblioteca</div>
                                 {localPlaylists.map(col => (
                                     <button
                                         key={col.id}
@@ -286,7 +294,7 @@ const SearchResultRow = memo(function SearchResultRow({
                                     <div className="collection-picker-new">
                                         <input
                                             type="text"
-                                            placeholder="Collection name..."
+                                            placeholder="Nombre de la lista…"
                                             value={newLibraryCollectionName}
                                             onChange={(e) => onNewLibraryCollectionNameChange(e.target.value)}
                                             onFocus={() => setHostInputFocused(true)}
@@ -302,7 +310,7 @@ const SearchResultRow = memo(function SearchResultRow({
                                             className="collection-picker-input"
                                         />
                                         <button className="btn-sm btn-primary" onClick={() => onCreateLibraryCollection(result.url)}>
-                                            Create
+                                            Crear
                                         </button>
                                     </div>
                                 ) : (
@@ -310,7 +318,7 @@ const SearchResultRow = memo(function SearchResultRow({
                                         className="collection-picker-item collection-picker-create"
                                         onClick={onShowNewLibraryCollection}
                                     >
-                                        <Plus size={14} /> New Collection
+                                        <Plus size={14} /> Nueva lista
                                     </button>
                                 )}
                             </div>
@@ -337,11 +345,13 @@ const SearchResultRow = memo(function SearchResultRow({
 const PlaylistSongRow = memo(function PlaylistSongRow({
     song,
     index,
+    focusKeyPrefix,
     onAddToQueue,
     onRemove,
 }: {
     song: Song;
     index: number;
+    focusKeyPrefix: string;
     onAddToQueue: (songId: string) => void;
     onRemove: (songId: string) => void;
 }) {
@@ -361,15 +371,17 @@ const PlaylistSongRow = memo(function PlaylistSongRow({
                 <div className="playlist-title">{song.title}</div>
             </div>
             <FocusableButton
+                focusKey={`${focusKeyPrefix}-queue`}
                 className="btn-sm btn-primary"
-                onClick={() => onAddToQueue(song.id)}
+                onClick={() =>                 onAddToQueue(song.id)}
             >
-                <Plus size={14} /> Queue
+                <Plus size={14} /> A la cola
             </FocusableButton>
             <FocusableButton
+                focusKey={`${focusKeyPrefix}-remove`}
                 className="playlist-remove-btn"
                 onClick={() => onRemove(song.id)}
-                title="Remove from playlist"
+                title="Quitar de la lista"
             >
                 <Trash2 size={14} />
             </FocusableButton>
@@ -424,7 +436,35 @@ const ControlPanel = ({
     const [renamingCollectionId, setRenamingCollectionId] = useState<string | null>(null);
     const [renameValue, setRenameValue] = useState('');
 
-    const { ref, focusKey } = useFocusable();
+    // Container only: focus must land on the real buttons, not this wrapper.
+    const { ref, focusKey } = useFocusable({ focusable: false });
+
+    // norigin has no autofocus: entering the host screen leaves focusKey null,
+    // so arrows/OK are silent no-ops (the remote looks dead on this screen).
+    // Positional descent into the panel root is unreliable (it lands on
+    // off-layout nodes with no action), so focus the explicit Invite button —
+    // the primary host action — once it registers. Same fix as ModeSelect.
+    useEffect(() => {
+        let cancelled = false;
+        let tries = 0;
+        const tryFocus = () => {
+            if (cancelled) return;
+            const current = SpatialNavigation.getCurrentFocusKey();
+            // A stale key (e.g. 'mode-host' left over from the unmounted
+            // ModeSelect) is truthy but points at a node that no longer
+            // exists, so norigin goes null on the next key press and the
+            // remote dies. Only skip if the focused node is real and not ours.
+            if (current && current !== 'host-invite' && SpatialNavigation.doesFocusableExist(current)) return;
+            if (SpatialNavigation.doesFocusableExist('host-invite')) {
+                SpatialNavigation.setFocus('host-invite');
+                return;
+            }
+            tries += 1;
+            if (tries < 20) window.setTimeout(tryFocus, 150);
+        };
+        const raf = requestAnimationFrame(tryFocus);
+        return () => { cancelled = true; cancelAnimationFrame(raf); };
+    }, []);
 
     const loadLocalPlaylists = useCallback(async () => {
         try {
@@ -547,6 +587,19 @@ const ControlPanel = ({
         }
     }, []);
 
+    // The range inputs below are not D-pad reachable (norigin can't focus a
+    // plain <input>), so the transport exposes discrete steps instead: buttons
+    // that jump volume by 10% and skip 10s either way.
+    const handleVolumeStep = useCallback((delta: number) => {
+        const base = isMuted ? 0 : shownVolume;
+        handleVolumeChange(base + delta);
+    }, [isMuted, shownVolume, handleVolumeChange]);
+
+    const handleSeekRelative = useCallback((delta: number) => {
+        if (!currentSong) return;
+        handleSeek(shownTime + delta);
+    }, [currentSong, shownTime, handleSeek]);
+
     const handleAddToQueue = useCallback(async (url: string) => {
         dispatchAddStatus({ type: 'START', target: 'queue', url });
         let success = false;
@@ -649,7 +702,7 @@ const ControlPanel = ({
     }, [loadLocalPlaylists]);
 
     const handleDeleteCollection = useCallback(async (collectionId: string) => {
-        if (!confirm('Are you sure you want to delete this collection?')) return;
+        if (!confirm('¿Seguro que quieres eliminar esta lista?')) return;
         try {
             await playlistDeleteCollection(collectionId);
             await loadLocalPlaylists();
@@ -694,7 +747,7 @@ const ControlPanel = ({
             console.error('[ControlPanel] Save to file failed:', error);
             // invoke throws string errors from Rust, or we might catch other JS errors
             if (typeof error === 'string' && error.includes('cancelled')) return;
-            alert('Failed to save file');
+            alert('No se pudo guardar el archivo');
         }
     }, []);
 
@@ -737,17 +790,18 @@ const ControlPanel = ({
         <FocusContext.Provider value={focusKey}>
             {/* Toggle Button (desktop only) */}
             {!isMobile && (
-                <button
+                <FocusableButton
+                    focusKey="host-panel-toggle"
                     className="panel-toggle"
                     onClick={onToggle}
+                    title={isCollapsed ? 'Mostrar panel' : 'Ocultar panel'}
                     style={{
                         right: isCollapsed ? '0px' : 'var(--panel-width)',
                         transition: 'right 0.3s ease'
                     }}
-                    tabIndex={0}
                 >
                     {isCollapsed ? <ChevronLeft size={20} /> : <ChevronRight size={20} />}
-                </button>
+                </FocusableButton>
             )}
 
             {/* Panel */}
@@ -756,11 +810,11 @@ const ControlPanel = ({
                     <span className="control-panel-title">KaraokeNatin</span>
                     <div style={{ display: 'flex', gap: '8px' }}>
                         {onBack && (
-                            <FocusableButton className="btn-icon" onClick={onBack} title="Back to mode selection">
+                            <FocusableButton focusKey="host-back" className="btn-icon" onClick={onBack} title="Volver a selección de modo">
                                 <ArrowLeft size={18} />
                             </FocusableButton>
                         )}
-                        <FocusableButton className="btn-icon" onClick={toggleTheme}>
+                        <FocusableButton focusKey="host-theme" className="btn-icon" onClick={toggleTheme} title={theme === 'dark' ? 'Tema claro' : 'Tema oscuro'}>
                             {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
                         </FocusableButton>
                     </div>
@@ -770,6 +824,7 @@ const ControlPanel = ({
                     {/* Invite Section */}
                     <div className="control-panel-section">
                         <FocusableButton
+                            focusKey="host-invite"
                             onClick={() => setShowInvite(!showInvite)}
                             className="invite-btn"
                             style={{
@@ -777,7 +832,7 @@ const ControlPanel = ({
                                 color: showInvite ? 'white' : 'var(--text-primary)',
                             }}
                         >
-                            <UserPlus size={18} /> Invite Friends
+                            <UserPlus size={18} /> Invitar amigos
                         </FocusableButton>
                         {showInvite && (
                             <div style={{ marginTop: '12px' }}>
@@ -788,38 +843,75 @@ const ControlPanel = ({
 
                     {/* Player Controls */}
                     <div className="control-panel-section">
-                        <div className="section-label">Now Playing</div>
+                        <div className="section-label">Reproduciendo ahora</div>
                         {currentSong ? (
                             <div className="now-playing-card">
                                 <div className="now-playing-title">{currentSong.title}</div>
                                 <div className="now-playing-artist">
-                                    {currentSong.artist || 'Unknown Artist'}
+                                    {currentSong.artist || 'Artista desconocido'}
                                 </div>
                             </div>
                         ) : (
-                            <div className="now-playing-empty">No song playing</div>
+                            <div className="now-playing-empty">No hay canción en reproducción</div>
                         )}
                         <div className="player-controls-row">
                             <FocusableButton
+                                focusKey="host-seek-back"
+                                className="btn-icon"
+                                onClick={() => handleSeekRelative(-10)}
+                                title="Retroceder 10 segundos"
+                            >
+                                <Rewind size={20} />
+                            </FocusableButton>
+                            <FocusableButton
+                                focusKey="host-play"
                                 className="btn-icon btn-accent"
                                 onClick={handlePlayPause}
-                                title={isPlaying ? 'Pause' : 'Play'}
+                                title={isPlaying ? 'Pausar' : 'Reproducir'}
                             >
                                 {isPlaying ? <Pause size={20} /> : <Play size={20} />}
                             </FocusableButton>
                             <FocusableButton
+                                focusKey="host-skip"
                                 className="btn-icon"
                                 onClick={handleSkip}
-                                title="Skip"
+                                title="Omitir"
                             >
                                 <SkipForward size={20} />
                             </FocusableButton>
                             <FocusableButton
+                                focusKey="host-seek-forward"
+                                className="btn-icon"
+                                onClick={() => handleSeekRelative(10)}
+                                title="Avanzar 10 segundos"
+                            >
+                                <FastForward size={20} />
+                            </FocusableButton>
+                        </div>
+                        <div className="player-controls-row">
+                            <FocusableButton
+                                focusKey="host-volume-down"
+                                className="btn-icon"
+                                onClick={() => handleVolumeStep(-10)}
+                                title="Bajar volumen"
+                            >
+                                <Volume1 size={20} />
+                            </FocusableButton>
+                            <FocusableButton
+                                focusKey="host-mute"
                                 className="btn-icon"
                                 onClick={handleToggleMute}
-                                title={isMuted ? 'Unmute' : 'Mute'}
+                                title={isMuted ? 'Activar sonido' : 'Silenciar'}
                             >
                                 {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
+                            </FocusableButton>
+                            <FocusableButton
+                                focusKey="host-volume-up"
+                                className="btn-icon"
+                                onClick={() => handleVolumeStep(10)}
+                                title="Subir volumen"
+                            >
+                                <Volume2 size={20} />
                             </FocusableButton>
                         </div>
 
@@ -835,7 +927,7 @@ const ControlPanel = ({
                                     min={0}
                                     max={Math.max(1, Math.floor(duration))}
                                     value={Math.min(shownTime, duration)}
-                                    aria-label="Seek"
+                                    aria-label="Posición"
                                     onChange={(e) => setPendingSeek(Number(e.target.value))}
                                     onMouseUp={(e) => handleSeek(Number((e.target as HTMLInputElement).value))}
                                     onTouchEnd={(e) => handleSeek(Number((e.target as HTMLInputElement).value))}
@@ -859,11 +951,11 @@ const ControlPanel = ({
                                 max={100}
                                 step={5}
                                 value={isMuted ? 0 : shownVolume}
-                                aria-label="Volume"
+                                    aria-label="Volumen"
                                 onChange={(e) => handleVolumeChange(Number(e.target.value))}
                             />
                             <span className="player-volume-value">
-                                {isMuted ? 'Muted' : `${shownVolume}%`}
+                                    {isMuted ? 'Silenciado' : `${shownVolume}%`}
                             </span>
                         </div>
                     </div>
@@ -872,35 +964,24 @@ const ControlPanel = ({
                     <div className="control-panel-section">
                         <div className="status-item">
                             <Users size={16} />
-                            <span>{connectedClients} connected</span>
+                            <span>{connectedClients} conectados</span>
                         </div>
                     </div>
 
                     {/* Search Section */}
                     <div className="control-panel-section">
-                        <div className="section-label">Add Songs</div>
+                        <div className="section-label">Agregar canciones</div>
                         <form onSubmit={handleSearch} className="search-container">
                             <div className="search-row">
-                                <input
-                                    type="text"
+                                <FocusableInput
+                                    focusKey="host-search-input"
                                     className="search-input"
-                                    placeholder="Search for songs..."
+                                    placeholder="Buscar canciones…"
                                     value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    onFocus={() => setHostInputFocused(true)}
-                                    onBlur={() => setHostInputFocused(false)}
-                                    onKeyDown={(e) => {
-                                        if (e.key === 'Enter') {
-                                            e.preventDefault();
-                                            e.stopPropagation();
-                                            if (searchQuery.trim()) {
-                                                onSearch(searchQuery);
-                                            }
-                                        }
-                                    }}
-                                    tabIndex={0}
+                                    onChange={setSearchQuery}
+                                    onSubmit={() => { if (searchQuery.trim()) onSearch(searchQuery); }}
                                 />
-                                <FocusableButton className="btn-icon search-btn" onClick={() => handleSearch({ preventDefault: () => { } } as React.FormEvent)}>
+                                <FocusableButton focusKey="host-search" className="btn-icon search-btn" onClick={() => handleSearch({ preventDefault: () => { } } as React.FormEvent)}>
                                     <Search size={18} />
                                 </FocusableButton>
                             </div>
@@ -910,7 +991,7 @@ const ControlPanel = ({
                         {searching && (
                             <div className="search-loading">
                                 <div className="spinner"></div>
-                                <p>Searching...</p>
+                                <p>Buscando…</p>
                             </div>
                         )}
 
@@ -920,6 +1001,7 @@ const ControlPanel = ({
                                     <SearchResultRow
                                         key={result.url}
                                         result={result}
+                                        focusKeyPrefix={result.url}
                                         isQueueLoading={addStatus.addingToQueue.has(result.url)}
                                         isQueueAdded={addStatus.addedToQueue.has(result.url)}
                                         isPlaylistLoading={addStatus.addingToPlaylist.has(result.url)}
@@ -955,21 +1037,22 @@ const ControlPanel = ({
 
                     {/* Queue Section */}
                     <div className="control-panel-section">
-                        <div className="section-label">Queue ({queue.length})</div>
+                            <div className="section-label">Cola ({queue.length})</div>
                         <Queue songs={queue} />
                     </div>
 
                     {/* Playlist Collections Section */}
                     <div className="control-panel-section">
                         <div className="section-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span><Music size={16} style={{ display: 'inline', verticalAlign: '-2px' }} /> Playlists ({totalSongs})</span>
+                            <span><Music size={16} style={{ display: 'inline', verticalAlign: '-2px' }} /> Listas ({totalSongs})</span>
                             <div style={{ display: 'flex', gap: '4px' }}>
                                 <FocusableButton
+                                    focusKey="host-import"
                                     className="btn-sm btn-secondary"
                                     onClick={handleLoadFromFile}
-                                    title="Import playlist file"
+                                    title="Importar archivo de lista"
                                 >
-                                    <Download size={13} /> Import
+                                    <Download size={13} /> Importar
                                 </FocusableButton>
                             </div>
                         </div>
@@ -1009,10 +1092,10 @@ const ControlPanel = ({
                                     className="collection-tab collection-tab-add"
                                     onClick={() => {
                                         invoke('process_command', {
-                                            command: { type: 'CREATE_COLLECTION', name: 'New Collection', visibility: 'public' },
+                                            command: { type: 'CREATE_COLLECTION', name: 'Nueva lista', visibility: 'public' },
                                         });
                                     }}
-                                    title="Create new collection"
+                                    title="Crear nueva lista"
                                 >
                                     <Plus size={14} />
                                 </button>
@@ -1023,38 +1106,42 @@ const ControlPanel = ({
                         {activeCollection && (
                             <div className="collection-actions-bar">
                                 <FocusableButton
+                                    focusKey="host-col-visibility"
                                     className="btn-sm btn-secondary"
                                     onClick={() => handleToggleVisibility(activeCollection)}
-                                    title={activeCollection.visibility === 'public' ? 'Make personal' : 'Make public'}
+                                    title={activeCollection.visibility === 'public' ? 'Hacer personal' : 'Hacer pública'}
                                 >
-                                    {activeCollection.visibility === 'public' ? <><Globe size={13} /> Public</> : <><Lock size={13} /> Personal</>}
+                                    {activeCollection.visibility === 'public' ? <><Globe size={13} /> Pública</> : <><Lock size={13} /> Personal</>}
                                 </FocusableButton>
                                 <FocusableButton
+                                    focusKey="host-col-rename"
                                     className="btn-sm btn-secondary"
                                     onClick={() => {
                                         setRenamingCollectionId(activeCollection.id);
                                         setRenameValue(activeCollection.name);
                                     }}
-                                    title="Rename"
+                                    title="Renombrar"
                                 >
                                     <Pencil size={13} />
                                 </FocusableButton>
                                 <FocusableButton
+                                    focusKey="host-col-export"
                                     className="btn-sm btn-secondary"
                                     onClick={() => handleSaveToFile(activeCollection.id)}
-                                    title="Export to file"
+                                    title="Exportar a archivo"
                                 >
-                                    <Upload size={13} /> Export
+                                    <Upload size={13} /> Exportar
                                 </FocusableButton>
                                 {playlists.length > 1 && (
                                     <FocusableButton
+                                        focusKey="host-col-delete"
                                         className="btn-sm btn-danger-text"
                                         onClick={() => {
-                                            if (confirm(`Delete "${activeCollection.name}"?`)) {
+                                            if (confirm(`¿Eliminar "${activeCollection.name}"?`)) {
                                                 handleDeleteCollection(activeCollection.id);
                                             }
                                         }}
-                                        title="Delete collection"
+                                        title="Eliminar lista"
                                     >
                                         <Trash2 size={13} />
                                     </FocusableButton>
@@ -1065,8 +1152,8 @@ const ControlPanel = ({
                         {/* Active collection songs */}
                         {!activeCollection || activeCollection.songs.length === 0 ? (
                             <div className="playlist-empty">
-                                <p>{localPlaylists.length === 0 ? 'No collections yet' : 'No songs in this collection'}</p>
-                                <p className="playlist-empty-hint">Add songs from search results</p>
+                                <p>{localPlaylists.length === 0 ? 'Aún no hay listas' : 'No hay canciones en esta lista'}</p>
+                                <p className="playlist-empty-hint">Agrega canciones desde los resultados de búsqueda</p>
                             </div>
                         ) : (
                             <div className="playlist-list">
@@ -1075,6 +1162,7 @@ const ControlPanel = ({
                                         key={song.id}
                                         song={song}
                                         index={i}
+                                        focusKeyPrefix={`pl-${song.id}`}
                                         onAddToQueue={(songId) => handlePlaylistToQueue(activeCollection.id, songId)}
                                         onRemove={(songId) => handleRemoveFromPlaylist(activeCollection.id, songId)}
                                     />
